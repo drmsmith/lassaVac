@@ -11,7 +11,7 @@ loadRData <- function(fileName){
 }
 
 ## Dataframe: catchment names, fix accents
-df_district_names = read.csv("J:/projects/lassa_vaccination/lassaX/data/catchments_zoonosis_lat_lon.csv")
+df_district_names = read.csv("LassaX/data/catchments_zoonosis_lat_lon.csv")
 
 if(fix_accents == T){
   df_district_names$NAME_1 <- gsub("\xe9", "é", df_district_names$NAME_1)
@@ -56,14 +56,14 @@ estBetaParams <- function(mu, var) {
 # Here consider scenario 3: IQR, median and N provided
 
 # this approach requires a table of values corresponding to eta, which helps approximate sampel sd from IQR
-df_eta = read.csv("J:/methods_learning/distributions_from_quartiles_eta_values.csv")
+# df_eta = read.csv("J:/methods_learning/distributions_from_quartiles_eta_values.csv")
 
-f_eta = function(n){
-  
-  if(n>50){eta = 1.34898}else{eta = as.numeric(c(df_eta%>%filter(Q==n))[2])}
-  
-  return(eta)
-}
+# f_eta = function(n){
+#   
+#   if(n>50){eta = 1.34898}else{eta = as.numeric(c(df_eta%>%filter(Q==n))[2])}
+#   
+#   return(eta)
+# }
 
 # X = mean; S = standard deviation; q1 = 1st quartile; q3 = 3rd quartile; m = median; n = sample size
 
