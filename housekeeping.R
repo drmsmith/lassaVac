@@ -10,7 +10,7 @@ loadRData <- function(fileName){
   get(ls()[ls() != "fileName"])
 }
 
-## Dataframe: catchment names, fix accents
+## Dataframe: district names, fix accents
 df_district_names = read.csv("LassaX/data/catchments_zoonosis_lat_lon.csv")
 
 if(fix_accents == T){
