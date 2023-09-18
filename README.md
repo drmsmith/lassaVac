@@ -15,6 +15,24 @@ This repository includes three main sections:
 # LASV
 Code for LASV transmission and vaccination
 
+*  (1) lassa_fever_R0_0631_v6C.R
+  *  Functions and parameter inputs underlying the stochastic branching process model, producing the "unpruned" model output (i.e. LASV incidence in absence of vaccination)
+
+*  (2) initialise.R
+  *  Generates indexed input files for branching process model from spillover incidence data ("spillover_data_v2.csv" and "incidence_ADM_1_SampleDF_Centiles.xlsx")
+
+*  (3) lassa_fever_run.R
+  *  Script to run branching process model from (1) based on inputs from (2)
+
+*  (4) file_processing.R
+  *  Reformats and summarises outputs generated after running (3)
+
+*  (5) lassa_fever_pruning_function.R
+  *  Function that prunes formatted outputs from (4)
+
+*  (6) lassa_fever_pruning_run.R
+  *  Script that runs code from (5) to execute infection pruning, using a range of necessary input parameters (vaccine efficacy against infection; R0 of LASV infection from h2h transmission; vaccine allocation scenarios from corresponding CSV scenario files containing the district-specific coveragse applied under each scenario and the year in which vaccination was applied in each district). Resulting "pruned" files are very large and were run for this work by dispatching jobs across supercomputing cores
+
 
 # LassaX
 Code for Lassa-X transmission and vaccination
