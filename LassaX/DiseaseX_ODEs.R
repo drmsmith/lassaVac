@@ -126,6 +126,7 @@ f_simulate_ODEs <- function(time,
 ### TEST ###
 ############
 
+
 # ### Example ODE simulation
 # 
 # # Rt curve
@@ -143,15 +144,19 @@ f_simulate_ODEs <- function(time,
 # par_gamma = 1/(par_gamma_shape/par_gamma_rate) # duration of infectious period
 # 
 # df_ODEs_simulated = f_simulate_ODEs(time = 0:500,
-#                                      states_init = c(S = 100000, E = 100, I = 100, R=0, V=0, VE = 0, VI = 0, VR = 0, 
-#                                                      dIncCumul_U = 0, dIncCumul_V = 0, DosesCumul = 0),
+#                                      states_init = c(S = 100000, E = 100,
+#                                                      I = 100, R=0, V=0,
+#                                                      VE = 0, VI = 0, VR = 0,
+#                                                      dIncCumul_U = 0,
+#                                                      dIncCumul_V = 0,
+#                                                      DosesCumul = 0),
 #                                      ODEs = f_ODEs_SEIR_Rt,
 #                                      parameters = c(alpha = par_alpha, gamma = par_gamma,
-#                                                     parVacStrat = 2, t_vacc_start = 10, vacc_eff = 0.6,
-#                                                     wastage = 0.1,
+#                                                     parVacStrat = 2, t_vacc_start = 10,
+#                                                     vacc_eff = 0.6, wastage = 0.1,
 #                                                     doses = 100))
 # 
-# df_ODEs_simulated%>%
+# df_ODEs_simulated %>%
 #   ggplot(aes(x = time, y = E+I + VE + VI))+
 #   geom_line()+
 #   theme_bw()+

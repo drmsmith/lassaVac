@@ -9,7 +9,8 @@ library(geosphere)
 # Admin1 longitude and latitude entered manually into original "catchments" CSV ("data/incidence_ADM_1_PB_2_JT1.csv")
 # data from https://www.geonames.org/NG/administrative-division-nigeria.html
 
-df_catchments_lassa = read.csv("LassaX/data/catchments_zoonosis_lat_lon.csv", stringsAsFactors = F)
+df_catchments_lassa = read.csv("LassaX/data/catchments_zoonosis_lat_lon.csv",
+                               stringsAsFactors = F)
 
 ### Probability of spillover in each catchment area
 n_spillover = sum(df_catchments_lassa$no_reversion_incidence_raster)
@@ -95,7 +96,8 @@ f_gravity_model = function(duration_spread = 365*2, doPrint = F){
   rownames(m_spread) = df_catchments_lassa$GID_1
   
   # identify first catchment, add to vector of infected catchments, update spread matrix
-  catchment0 = sample(df_catchments_lassa$GID_1, size = 1, prob = df_catchments_lassa$p_spillover)
+  catchment0 = sample(df_catchments_lassa$GID_1, size = 1, 
+                      prob = df_catchments_lassa$p_spillover)
   
   vec_catchments_infected = catchment0
   
@@ -111,7 +113,8 @@ f_gravity_model = function(duration_spread = 365*2, doPrint = F){
       #print(paste0("on day ", date_i, ", evaluating potential spread from ", catchment_infect_j))
       
       # evaluate probability of spread to all catchments not currently infected
-      for(catchment_suscept_k in df_catchments_lassa$GID_1[!df_catchments_lassa$GID_1 %in% vec_catchments_infected]){
+      for(catchment_suscept_k in df_catchments_lassa$GID_1[!df_catchments_lassa$GID_1 %in%
+                                                           vec_catchments_infected]){
         
         # gravity term
         infect_i_j = rbinom(1, 1, m_gravity[catchment_infect_j, catchment_suscept_k])
@@ -158,6 +161,6 @@ for(gravity_i in 1:n_spread_matrices){
   
 }
 
-# save(list_gravity_spread, file = "inputs_list_gravity_spread.Rdata")
+# save(list_gravity_spread, file = "LassaX/data/inputs_list_gravity_spread.RData")
 
 

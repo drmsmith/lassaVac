@@ -31,7 +31,6 @@ output_set = 1
 # allocate vac to recovereds and susceptibles (parVacStrat = 2)
 # 10% wastage of vaccine doses
 # 2 year time horizon for each outbreak in each district
-
 if(output_set == 1){
   output_format = "output_long"
   first_sim = 1
@@ -75,7 +74,8 @@ df_catchments_ebola = read.csv("LassaX/data/inputs_df_catchments_ebola.csv")
 list_Rt_ebola_i = loadRData("LassaX/data/inputs_list_Rt_curves.Rdata")
 
 ### Lassa catchments
-df_catchments_lassa = read.csv("data/catchments_zoonosis_lat_lon.csv", stringsAsFactors = F)
+df_catchments_lassa = read.csv("LassaX/data/catchments_zoonosis_lat_lon.csv",
+                               stringsAsFactors = F)
 
 ### Lassa-X initial conditions
 list_initial_conditions = loadRData("LassaX/data/inputs_list_initial_conditions.Rdata")
@@ -148,7 +148,9 @@ for(simulation_i in first_sim:n_simulations){
     if(popSize_j < popThreshold1){
       
       # small pop size
-      df_catchments_ebola_j = df_catchments_ebola_Rt_curves%>%dplyr::filter(Population_bin == 1)
+      df_catchments_ebola_j = df_catchments_ebola_Rt_curves %>%
+        dplyr::filter(Population_bin == 1)
+      
       rand_j = sample(1:nrow(df_catchments_ebola_j), 1)
       
       catchment_Rt_j = df_catchments_ebola_j$District[rand_j]
@@ -157,7 +159,9 @@ for(simulation_i in first_sim:n_simulations){
       if(popSize_j >= popThreshold1 & popSize_j < popThreshold2){
         
         # intermediate pop size
-        df_catchments_ebola_j = df_catchments_ebola_Rt_curves%>%dplyr::filter(Population_bin == 2)
+        df_catchments_ebola_j = df_catchments_ebola_Rt_curves %>% 
+          dplyr::filter(Population_bin == 2)
+        
         rand_j = sample(1:nrow(df_catchments_ebola_j), 1)
         
         catchment_Rt_j = df_catchments_ebola_j$District[rand_j]
@@ -165,7 +169,9 @@ for(simulation_i in first_sim:n_simulations){
       }else{
         
         # large pop size
-        df_catchments_ebola_j = df_catchments_ebola_Rt_curves%>%dplyr::filter(Population_bin == 3)
+        df_catchments_ebola_j = df_catchments_ebola_Rt_curves %>% 
+          dplyr::filter(Population_bin == 3)
+        
         rand_j = sample(1:nrow(df_catchments_ebola_j), 1)
         
         catchment_Rt_j = df_catchments_ebola_j$District[rand_j]
@@ -254,7 +260,8 @@ for(simulation_i in first_sim:n_simulations){
                    infect0 = infect0_k,
                    simulation = simulation_i,
                    vaccEff = par_vacc_eff)%>%
-            group_by(country, catchment, infect0, vacc_alloc, vacc_strategy, vacc_dosing, simulation, vaccEff)%>%
+            group_by(country, catchment, infect0, vacc_alloc, 
+                     vacc_strategy, vacc_dosing, simulation, vaccEff) %>%
             summarise(IncCumul_U_final = max(IncCumul_U),
                       IncCumul_V_final = max(IncCumul_V),
                       DosesCumul_final = max(DosesCumul))
@@ -265,7 +272,7 @@ for(simulation_i in first_sim:n_simulations){
     }
   }
   
-  save(list_diseaseX_i, file = paste0("list_diseaseX_i_outputSet_", output_set, "_simulation_", simulation_i,".Rdata"))
+  save(list_diseaseX_i, file = paste0("res/list_diseaseX_i_outputSet_", output_set, "_simulation_", simulation_i,".Rdata"))
   
   qounter = 0
   list_diseaseX_i = list()

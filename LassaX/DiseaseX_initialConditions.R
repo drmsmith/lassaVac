@@ -48,9 +48,9 @@ f_initialConditions = function(m_spread,
   # create dataframe binding final updated m_spread_conditions with population size of each
   # select only the districts that have any transmission
   df_spread_conditions = as.data.frame(m_spread_conditions)%>%
-    left_join(df_district_names%>%dplyr::select(GID_1, COUNTRY, Population_raster),
-              by = "GID_1")%>%
-    filter(!is.na(initial_size))%>%
+    left_join(df_district_names %>% 
+                dplyr::select(GID_1, COUNTRY, Population_raster), by = "GID_1") %>%
+    filter(!is.na(initial_size)) %>%
     mutate(initial_size = as.numeric(initial_size),
            timing = as.numeric(timing))
   
@@ -127,11 +127,12 @@ list_gravity_spread = loadRData("LassaX/data/inputs_list_gravity_spread.Rdata")
 ### Determine initial conditions for each element of list_gravity_spread
 list_initial_conditions = list()
 for(gravity_spread_i in 1:length(list_gravity_spread)){
-  print(paste0("calculating initial conditions for gravity model run ", gravity_spread_i, " of ", length(list_gravity_spread)))
+  print(paste0("calculating initial conditions for gravity model run ",
+               gravity_spread_i, " of ", length(list_gravity_spread)))
   
   list_initial_conditions[[gravity_spread_i]] = f_initialConditions(list_gravity_spread[[gravity_spread_i]])
   
 }
 
 ### Save initial conditions
-# save(list_initial_conditions, file = "inputs_list_initial_conditions.Rdata")
+# save(list_initial_conditions, file = "LassaX/data/inputs_list_initial_conditions.RData")

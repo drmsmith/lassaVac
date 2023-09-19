@@ -167,8 +167,11 @@ custom_estimate_R_func <- function(incid,
         }
       }
       temp <- lapply(seq_len(config$n1), function(k) sample_from_posterior(config$n2,
-                                                                           incid, mean_si_sample[k], std_si_sample[k],
-                                                                           si_distr = NULL, a_prior,
+                                                                           incid,
+                                                                           mean_si_sample[k],
+                                                                           std_si_sample[k],
+                                                                           si_distr = NULL,
+                                                                           a_prior,
                                                                            b_prior, config$t_start, config$t_end
       ))
       config$si_distr <- cbind(
@@ -177,9 +180,9 @@ custom_estimate_R_func <- function(incid,
       )
       r_sample <- matrix(NA, config$n2 * config$n1, nb_time_periods)
       for (k in seq_len(config$n1)) {
-        r_sample[seq((k - 1) * config$n2 + 1, k * config$n2), which(config$t_end >
-                                                                      mean_si_sample[k])] <- (temp[[k]])[[1]][, which(config$t_end >
-                                                                                                                        mean_si_sample[k])]
+        r_sample[seq((k - 1) * config$n2 + 1, k * config$n2), 
+                 which(config$t_end > mean_si_sample[k])] <- (temp[[k]])[[1]][, 
+                                                                              which(config$t_end > mean_si_sample[k])]
       }
       mean_posterior <- colMeans(r_sample, na.rm = TRUE)
       std_posterior <- apply(r_sample, 2, sd, na.rm = TRUE)
