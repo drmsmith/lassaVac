@@ -4,6 +4,8 @@ library(ggsci)
 library(scales)
 library(cowplot)
 
+fix_accents = F
+
 loadRData <- function(fileName){
   #loads an RData file, and returns it
   load(fileName)
@@ -83,3 +85,122 @@ f_dist_from_quartiles = function(q1, m, q3, n){
   result = c('X' = X, 'S' = S, 'shape' = shape, 'scale' = scale)
   return(result)
 }
+
+
+
+# incubation period
+par_alpha_shape = 11.1191707
+par_alpha_rate = 1.084107
+par_alpha = 1/(par_alpha_shape/par_alpha_rate) # duration of non-infectious exposed period
+
+# infectious period
+par_gamma_shape = 1.862467
+par_gamma_rate = 0.164666
+par_gamma = 1/(par_gamma_shape/par_gamma_rate) # duration of infectious period
+
+
+###########################################
+### Determine set of initial conditions ###
+###########################################
+
+### Define output set
+# output_set = 1
+output_set = 2
+
+
+### Set 1 ###
+# Long output, 1 simulation
+# vaccine 50%, 70% or 90% effective against infection
+# no immunity at outset (propImmun = 0)
+# allocate vac to recovereds and susceptibles (parVacStrat = 2)
+# 10% wastage of vaccine doses
+# 2 year time horizon for each outbreak in each district
+if(output_set == 1){
+  output_format = "output_long"
+  first_sim = 1
+  n_simulations = 1 # a single simulation
+  vec_vacc_eff = c(0.5, 0.7,0.9) # effective rate of vaccination
+  par_propImmun = 0 # proportion immune upon simulation onset
+  par_parVacStrat = 2 # vaccine allocation strategy (see ODEs)
+  wastage = 0.1
+  n_duration_j = 365*2 # duration of simulation within each district
+}
+
+### Set 2 ###
+# Brief output, 100 simulations
+# vaccine 90% effective against infection
+# no immunity at outset (propImmun = 0)
+# allocate vac to recovereds and susceptibles (parVacStrat = 2)
+# 10% wastage of vaccine doses
+# 2 year time horizon for each outbreak in each district
+if(output_set == 2){
+  output_format = "output_brief"
+  first_sim = 1
+  n_simulations = 5#100 # a single simulation
+  vec_vacc_eff = c(0, 0.5, 0.7,0.9) # effective rate of vaccination
+  par_propImmun = 0 # proportion immune upon simulation onset
+  par_parVacStrat = 2 # vaccine allocation strategy (see ODEs)
+  wastage = 0.1
+  n_duration_j = 365*2 # duration of simulation within each district
+}
+
+
+
+
+#################
+### load data ###
+#################
+
+### Ebola catchments
+df_catchments_ebola = read.csv("LassaX/data/inputs_df_catchments_ebola.csv")
+
+### Ebola Rt curves
+list_Rt_ebola_i = loadRData("LassaX/data/inputs_list_Rt_curves.Rdata")
+
+### Lassa catchments
+df_catchments_lassa = read.csv("LassaX/data/catchments_zoonosis_lat_lon.csv",
+                               stringsAsFactors = F)
+
+### Lassa-X initial conditions
+list_initial_conditions = loadRData("LassaX/data/inputs_list_initial_conditions.Rdata")
+
+##################
+### DRAWING RT ###
+##################
+
+### bin Ebola catchments into 3 groups based on population size
+vec_catchments_ebola_Rt = c()
+for(index_i in 1:length(list_Rt_ebola_i)){
+  
+  catchment_ebola_i = list_Rt_ebola_i[[index_i]][["district"]]
+  population_i = list_Rt_ebola_i[[index_i]][["district"]]
+  
+  if(!catchment_ebola_i %in% vec_catchments_ebola_Rt){
+    vec_catchments_ebola_Rt = c(vec_catchments_ebola_Rt, catchment_ebola_i)
+  }
+}
+
+### bin Ebola catchments into 3 groups based on population size
+df_catchments_ebola_Rt_curves = df_catchments_ebola%>%
+  filter(District %in% vec_catchments_ebola_Rt)%>%
+  mutate(Population = as.numeric(Population))%>%
+  arrange(Population)%>%
+  #mutate(row_number = row_number())%>%
+  mutate(Population_bin = case_when(row_number() < 47/3 ~ 1,
+                                    row_number() >= 47/3 & row_number() < 47*2/3 ~ 2,
+                                    T ~ 3))
+
+### bin Lassa catchments into 3 groups based on population size
+df_catchments_lassa_binned = df_catchments_lassa%>%
+  mutate(Population_raster = as.numeric(Population_raster))%>%
+  arrange(Population_raster)%>%
+  #mutate(row_number = row_number())%>%
+  mutate(Population_bin = case_when(row_number() < nrow(df_catchments_lassa)/3 ~ 1,
+                                    row_number() >= nrow(df_catchments_lassa)/3 & row_number() < nrow(df_catchments_lassa)*2/3 ~ 2,
+                                    T ~ 3))
+
+### What are the population size thresholds for these three bins?
+popThreshold1 = 816000 
+popThreshold2 = 2200000
+
+

@@ -1,123 +1,41 @@
-library(tidyverse)
-library(deSolve)
+library('magrittr')
+library('tidyverse')
+library('deSolve')
+
 
 source("housekeeping.R")
 source("LassaX/DiseaseX_ODEs.R")
 
-# incubation period
-par_alpha_shape = 11.1191707
-par_alpha_rate = 1.084107
-par_alpha = 1/(par_alpha_shape/par_alpha_rate) # duration of non-infectious exposed period
+###############
+# parallelise #
+###############
 
-# infectious period
-par_gamma_shape = 1.862467
-par_gamma_rate = 0.164666
-par_gamma = 1/(par_gamma_shape/par_gamma_rate) # duration of infectious period
+library('doParallel')
+library('foreach')
+library('progress')
 
-
-###########################################
-### Determine set of initial conditions ###
-###########################################
-
-### Define output set
-output_set = 1
-# output_set = 2
-
-
-### Set 1 ###
-# Long output, 1 simulation
-# vaccine 50%, 70% or 90% effective against infection
-# no immunity at outset (propImmun = 0)
-# allocate vac to recovereds and susceptibles (parVacStrat = 2)
-# 10% wastage of vaccine doses
-# 2 year time horizon for each outbreak in each district
-if(output_set == 1){
-  output_format = "output_long"
-  first_sim = 1
-  n_simulations = 1 # a single simulation
-  vec_vacc_eff = c(0.5, 0.7,0.9) # effective rate of vaccination
-  par_propImmun = 0 # proportion immune upon simulation onset
-  par_parVacStrat = 2 # vaccine allocation strategy (see ODEs)
-  wastage = 0.1
-  n_duration_j = 365*2 # duration of simulation within each district
-}
-
-### Set 2 ###
-# Brief output, 100 simulations
-# vaccine 90% effective against infection
-# no immunity at outset (propImmun = 0)
-# allocate vac to recovereds and susceptibles (parVacStrat = 2)
-# 10% wastage of vaccine doses
-# 2 year time horizon for each outbreak in each district
-if(output_set == 2){
-  output_format = "output_brief"
-  first_sim = 1
-  n_simulations = 100 # a single simulation
-  vec_vacc_eff = c(0, 0.5, 0.7,0.9) # effective rate of vaccination
-  par_propImmun = 0 # proportion immune upon simulation onset
-  par_parVacStrat = 2 # vaccine allocation strategy (see ODEs)
-  wastage = 0.1
-  n_duration_j = 365*2 # duration of simulation within each district
-}
-
-
-
-
-#################
-### load data ###
-#################
-
-### Ebola catchments
-df_catchments_ebola = read.csv("LassaX/data/inputs_df_catchments_ebola.csv")
-
-### Ebola Rt curves
-list_Rt_ebola_i = loadRData("LassaX/data/inputs_list_Rt_curves.Rdata")
-
-### Lassa catchments
-df_catchments_lassa = read.csv("LassaX/data/catchments_zoonosis_lat_lon.csv",
-                               stringsAsFactors = F)
-
-### Lassa-X initial conditions
-list_initial_conditions = loadRData("LassaX/data/inputs_list_initial_conditions.Rdata")
-
-##################
-### DRAWING RT ###
-##################
-
-### bin Ebola catchments into 3 groups based on population size
-vec_catchments_ebola_Rt = c()
-for(index_i in 1:length(list_Rt_ebola_i)){
-  
-  catchment_ebola_i = list_Rt_ebola_i[[index_i]][["district"]]
-  population_i = list_Rt_ebola_i[[index_i]][["district"]]
-  
-  if(!catchment_ebola_i %in% vec_catchments_ebola_Rt){
-    vec_catchments_ebola_Rt = c(vec_catchments_ebola_Rt, catchment_ebola_i)
+# Progress combine function
+f <- function(iterator){
+  pb <- txtProgressBar(min = 1, max = iterator - 1, style = 3)
+  count <- 0
+  function(...) {
+    count <<- count + length(list(...)) - 1
+    setTxtProgressBar(pb, count)
+    flush.console()
+    list(...) # this can feed into .combine option of foreach
   }
 }
 
-### bin Ebola catchments into 3 groups based on population size
-df_catchments_ebola_Rt_curves = df_catchments_ebola%>%
-  filter(District %in% vec_catchments_ebola_Rt)%>%
-  mutate(Population = as.numeric(Population))%>%
-  arrange(Population)%>%
-  #mutate(row_number = row_number())%>%
-  mutate(Population_bin = case_when(row_number() < 47/3 ~ 1,
-                                    row_number() >= 47/3 & row_number() < 47*2/3 ~ 2,
-                                    T ~ 3))
 
-### bin Lassa catchments into 3 groups based on population size
-df_catchments_lassa_binned = df_catchments_lassa%>%
-  mutate(Population_raster = as.numeric(Population_raster))%>%
-  arrange(Population_raster)%>%
-  #mutate(row_number = row_number())%>%
-  mutate(Population_bin = case_when(row_number() < nrow(df_catchments_lassa)/3 ~ 1,
-                                    row_number() >= nrow(df_catchments_lassa)/3 & row_number() < nrow(df_catchments_lassa)*2/3 ~ 2,
-                                    T ~ 3))
-
-### What are the population size thresholds for these three bins?
-popThreshold1 = 816000 
-popThreshold2 = 2200000
+totalCores = detectCores()
+# cl <- makeCluster(totalCores[1]-1, type='SOCK')
+cl <- parallel::makeCluster(4, type='PSOCK')
+registerDoParallel(cl)
+clusterEvalQ(cl,  library('magrittr'))
+clusterEvalQ(cl,  library('tidyverse'))
+clusterEvalQ(cl,  library('deSolve'))
+clusterEvalQ(cl, source("housekeeping.R"))
+clusterEvalQ(cl, source("LassaX/DiseaseX_ODEs.R"))
 
 
 
@@ -126,7 +44,9 @@ popThreshold2 = 2200000
 ################
 
 ### For each set of initial conditions
-for(simulation_i in first_sim:n_simulations){
+# .packages = c('magrittr', 'tidyverse', 'deSolve')
+foreach(simulation_i = icount(n_simulations), .combine = f(n_simulations)) %dopar% {
+# for(simulation_i in first_sim:n_simulations){
   
   qounter = 0
   list_diseaseX_i = list()
@@ -138,10 +58,11 @@ for(simulation_i in first_sim:n_simulations){
   # for catchment_j in initialConditions_i, begin simulation
   for(catchment_j in vec_catchments_i){
     
-    print(paste0("simulating lassa-X transmission in ", catchment_j))
+    # print(paste0("simulating lassa-X transmission in ", catchment_j))
     
     # extract population size of catchment_j
-    df_initialConditions_j = df_initialConditions_i%>%dplyr::filter(GID_1 == catchment_j)
+    df_initialConditions_j = df_initialConditions_i %>% 
+      dplyr::filter(GID_1 == catchment_j)
     popSize_j = first(df_initialConditions_j$Population_raster)
     
     # sample district from Ebola data based on population size
@@ -179,10 +100,12 @@ for(simulation_i in first_sim:n_simulations){
       }
     }
     
-    # select Rt curve corresponding to Ebola catchment that matches population bin from focal Lassa catchment
+    # select Rt curve corresponding to Ebola catchment that 
+    # matches population bin from focal Lassa catchment
     for(index_Rt_catchment in 1:length(list_Rt_ebola_i)){
       # which entry in list_Rt_ebola_i corresponds with the chosen catchment
-      if(list_Rt_ebola_i[[index_Rt_catchment]][["district"]] == catchment_Rt_j){index_list_Rt_ebola_i = index_Rt_catchment}
+      if(list_Rt_ebola_i[[index_Rt_catchment]][["district"]] == catchment_Rt_j){ 
+        index_list_Rt_ebola_i = index_Rt_catchment}
     }
     
     m_Rt_curve_j = list_Rt_ebola_i[[index_list_Rt_ebola_i]][["m_Rt"]]
@@ -213,7 +136,7 @@ for(simulation_i in first_sim:n_simulations){
         qounter = qounter + 1
         
         # print statement to place ourselves
-        print(paste0("simulating vacc_strategy ", vacc_strategy_k, " and dosing ", vacc_dosing_k, " with VE", par_vacc_eff))
+        # print(paste0("simulating vacc_strategy ", vacc_strategy_k, " and dosing ", vacc_dosing_k, " with VE", par_vacc_eff))
         
         
         ### Launch ODEs with corresponding conditions
@@ -277,6 +200,8 @@ for(simulation_i in first_sim:n_simulations){
   qounter = 0
   list_diseaseX_i = list()
 }
+
+stopCluster(cl)
 
 
 # test = do.call(rbind, list_diseaseX_i)
