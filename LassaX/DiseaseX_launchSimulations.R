@@ -75,7 +75,7 @@ df_catchments_ebola = read.csv("LassaX/data/inputs_df_catchments_ebola.csv")
 list_Rt_ebola_i = loadRData("LassaX/data/inputs_list_Rt_curves.Rdata")
 
 ### Lassa catchments
-df_catchments_lassa = read.csv("data/catchments_zoonosis_lat_lon.csv", stringsAsFactors = F)
+df_catchments_lassa = read.csv("LassaX/data/catchments_zoonosis_lat_lon.csv", stringsAsFactors = F)
 
 ### Lassa-X initial conditions
 list_initial_conditions = loadRData("LassaX/data/inputs_list_initial_conditions.Rdata")
