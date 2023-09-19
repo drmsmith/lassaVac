@@ -1,6 +1,7 @@
 library(tidyverse)
 library(deSolve)
 
+fix_accents = F
 source("housekeeping.R")
 source("LassaX/DiseaseX_ODEs.R")
 
