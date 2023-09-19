@@ -9,6 +9,7 @@ library(cowplot)
 ### RUN CUSTOMIZED EPIESTIM ###
 ###############################
 
+fix_accents = F
 source("housekeeping.R")
 source("lassaX/custom_EpiEstim.R")
 
