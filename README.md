@@ -59,6 +59,7 @@ Code for Lassa-X transmission and vaccination.
 Code to run post-processing of epidemiological data.
 
 # Contact
-David R M Smith (david.smith@ndph.ox.ac.uk; davidrobertmundysmith@gmail.com)  
+David R M Smith  
 Nuffield Department of Population Health  
-University of Oxford  
+University of Oxford   
+david.smith@ndph.ox.ac.uk; davidrobertmundysmith@gmail.com  
