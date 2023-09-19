@@ -78,8 +78,8 @@ for(catchment_i in df_catchments_lassa$GID_1){
   }
 }
 
-# write.csv(m_euclidean, "data/mat_euclidean.csv")
-# write.csv(m_gravity, "data/mat_gravity.csv")
+# write.csv(m_euclidean, "LassaX/data/mat_euclidean.csv")
+# write.csv(m_gravity, "LassaX/data/mat_gravity.csv")
 
 m_euclidean = read.csv("LassaX/data/mat_euclidean.csv", row.names = 1)
 
