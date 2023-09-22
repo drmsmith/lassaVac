@@ -5,7 +5,6 @@
 ### varied in Monte Carlo simulations in the health-economic model
 
 # set working directory
-setwd("J:/projects/lassa_vaccination/")
 
 # source housekeeping file
 fix_accents = F
@@ -32,8 +31,8 @@ vec_seasonality = rbeta(1000000, 9.532623, 6.438107)
 c(mean(vec_seasonality), sd(vec_seasonality), qbeta(c(0.025, 0.975), 9.532623, 6.438107))
 
 ### incubation period
-vec_incubation = rgamma(1000000, shape = 11.1191707, scale = 1/0.9224181)
-c(mean(vec_incubation), sd(vec_incubation), qgamma(c(0.025, 0.975), shape = 11.1191707, scale = 1/0.9224181))
+vec_incubation = rgamma(1000000, shape = 11.1191707, scale = 0.9224181)
+c(mean(vec_incubation), sd(vec_incubation), qgamma(c(0.025, 0.975), shape = 11.1191707, scale = 0.9224181))
 
 ### infectious period
 vec_infectious = rgamma(1000000, shape = 1.862467, scale = 6.0729)
@@ -110,7 +109,7 @@ parvec_prob_treat_comm_gvt = rnorm(n_sims_montecarlo, p_treatment_gvt_mean, p_tr
 
 # data from: https://academic.oup.com/inthealth/advance-article/doi/10.1093/inthealth/ihac076/6840000?login=true
 
-data_simons <- readxl::read_xlsx("parameters_scenarios/data_econ/suspected_confirmed_deaths.xlsx")
+data_simons <- readxl::read_xlsx("HealthEconomics/data_econ/suspected_confirmed_deaths.xlsx")
 
 
 # CFR was calculated using the number of reported deaths as the numerator and cases as the denominator, 
@@ -188,7 +187,7 @@ vec_n_hosp <- rnorm(n=10000, mean=n_hosp_mean, sd=n_hosp_sd)
 
 ### Calculate probability of hospitalisation based on number of hospitalisations (these data) and number of infections (transmission model)
 
-### From raw data
+### From raw data [not possible from Github, underlying data too large to be loaded]
 
 # data_n_infect=loadRData("lassa/simulations/99_runs/outputs_clean_00/list_Lassa_00_byDistrict_annual.Rdata")%>%
 #   do.call(rbind,.)
@@ -201,7 +200,7 @@ vec_n_hosp <- rnorm(n=10000, mean=n_hosp_mean, sd=n_hosp_sd)
 # 
 # df_LASV_incidence_annual_edo_ondo = rbind(data_n_infect_edo, data_n_infect_ondo)
 
-data_n_infect_districts_high_surveillance = read.csv("parameters_scenarios/data_econ/df_LASV_incidence_annual_edo_ondo.csv")
+data_n_infect_districts_high_surveillance = read.csv("HealthEconomics/data_econ/df_LASV_incidence_annual_edo_ondo.csv")
 
 
 vec_n_infect = sample(c(data_n_infect_districts_high_surveillance$unpruned), 10000, replace = T)
@@ -433,7 +432,7 @@ parvec_disutility_sequelae = sample(vec_hearingloss_final, 100)
 
 ### Load Excel file with estimated number of patients with each symptom, and extract rows with associated disability
 # NB: hearing loss excluded as considered as chronic sequelae
-df_daly_hospital_raw = read.csv("parameters_scenarios/data_econ/DALYs_weighting_v3_summarized.csv")%>%
+df_daly_hospital_raw = read.csv("HealthEconomics/data_econ/DALYs_weighting_v3_summarized.csv")%>%
   mutate(baseline_p = baseline_n/baseline_N,
          post_p = post_n/post_N)
 
@@ -510,13 +509,13 @@ df_params_montecarlo = data.frame(n_sim_montecarlo = 1:n_sims_montecarlo,
                                   disutility_sequelae = parvec_disutility_sequelae)
 
 ### Save dat
-# save(df_params_montecarlo, file = "J:/projects/lassa_vaccination/parameters_scenarios/params_montecarlo.Rdata")
+# save(df_params_montecarlo, file = "HealthEconomics/data_econ/params_montecarlo.Rdata")
 
 #################################################
 ### UNIVARIATE SENSITIVITY ANALYSIS DATAFRAME ###
 #################################################
 
-df_params_montecarlo = loadRData("J:/projects/lassa_vaccination/parameters_scenarios/params_montecarlo.Rdata")
+df_params_montecarlo = loadRData("HealthEconomics/data_econ/params_montecarlo.Rdata")
 
 vec_usa_prob_symptoms = c(mean(df_params_montecarlo$prob_symptoms), min(df_params_montecarlo$prob_symptoms), max(df_params_montecarlo$prob_symptoms), rep(mean(df_params_montecarlo$prob_symptoms), 22))
 vec_usa_prob_treat_comm_any = c(rep(mean(df_params_montecarlo$prob_treat_comm_any), 3), min(df_params_montecarlo$prob_treat_comm_any), max(df_params_montecarlo$prob_treat_comm_any), rep(mean(df_params_montecarlo$prob_treat_comm_any), 20))
@@ -546,4 +545,4 @@ df_params_usa = data.frame(n_sim_montecarlo = 1:25,
                                   disutility_sequelae = vec_usa_disutility_sequelae)
 
 ### Save dat
-# save(df_params_usa, file = "J:/projects/lassa_vaccination/parameters_scenarios/params_usa.Rdata")
+# save(df_params_usa, file = "HealthEconomics/data_econ/params_usa.Rdata")
