@@ -15,7 +15,7 @@ This repository includes three main sections:
 # LASV
 Code for LASV transmission and vaccination, built upon estimates from a geospatial risk map of LASV spillover from Mastomys natalensis to humans.
 
-*  (1) lassa_fever_R0_0631_v6C.R  
+*  (1) lassa_fever_R0_0631_v6C.R
   *  Functions and parameter inputs underlying the stochastic branching process model, producing the "unpruned" model output (i.e. LASV incidence in absence of vaccination)
 
 *  (2) initialise.R  
