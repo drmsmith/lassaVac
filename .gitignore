@@ -4,3 +4,6 @@
 .Ruserdata
 LassaX/data/inputs_list*
 res
+LassaX/data_chik/worldpop
+LassaX/data_chik/world_bank_pop
+LassaX/data_chik/worldpop_failed_packages.R
