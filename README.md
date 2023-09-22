@@ -33,6 +33,7 @@ Code for LASV transmission and vaccination, built upon estimates from a geospati
 *  (6) lassa_fever_pruning_run.R   
   *  Script that runs code from (5) to execute infection pruning, using a range of necessary input parameters (vaccine efficacy against infection; R0 of LASV infection from h2h transmission; vaccine allocation scenarios from corresponding CSV scenario files containing the district-specific coveragse applied under each scenario and the year in which vaccination was applied in each district). Resulting "pruned" files are very large and were run for this work by dispatching jobs across supercomputing cores
 
+NB: this LASV code contains 7 vaccination scenarios. Scenario 2 was ultimately removed for downstream analyses, and scenarios 3 through 7 have been renumbered as 2 through 6. 
 
 # LassaX
 Code for Lassa-X transmission and vaccination.
