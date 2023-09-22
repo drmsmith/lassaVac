@@ -61,12 +61,15 @@ Code to run post-processing of epidemiological data.
 
 * (1) Lassa_data_overview.pptx
   *  Descriptive slide providing an overview of the data inputs and support code for calculation of economic parameters, including demographic data, treatment costs, productivity losses, risks of catastrophic expenditures, etc., as well as parameters varied in Monte Carlo simulations and univariate sensitivity analyses.
+
+*  (2) /data_econ
+  *  Directory containing raw data, data processing scripts and processed data for economic parameter inputs; see (1) for detail
  
-* (2) econOutcomes_inputs.R
+* (3) econOutcomes_inputs.R
   *  Script to load and format economic parameter input data
 
-* (3) econOutcomes_func.R
-  *  Script containing a function that calculates all health-economic outcomes from epidemic input data
+* (4) econOutcomes_func.R
+  *  Script containing a function that calculates health-economic outcomes from epidemic input data (both Lassa and Lassa-X)
 
 # Contact
 David R M Smith  
