@@ -10,7 +10,7 @@ This repository includes three main sections:
 
 # lassaVac.Rproj
 *  An R project containing all necessary files and input data
-*  housekeeping.R contains background functions and intputs called across multiple scripts
+*  housekeeping.R contains background functions and inputs called across multiple scripts
 
 # LASV
 Code for LASV transmission and vaccination, built upon estimates from a geospatial risk map of LASV spillover from Mastomys natalensis to humans.
