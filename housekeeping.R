@@ -4,6 +4,7 @@ library(ggsci)
 library(scales)
 library(cowplot)
 library(meta)
+library(Hmisc)
 
 loadRData <- function(fileName){
   #loads an RData file, and returns it
