@@ -60,7 +60,7 @@ Code for Lassa-X transmission and vaccination.
 Code to run post-processing of epidemiological data.
 
 * (1) Lassa_data_overview.pptx
-  *  Descriptive slide providing an overview of the data inputs and support code for calculation of economic parameters, including demographic data, treatment costs, productivity losses, risks of catastrophic expenditures, etc., as well as parameters varied in Monte Carlo simulations and univariate sensitivity analyses.
+  *  Descriptive slide providing an overview of the data inputs and support code for calculation of economic parameters, including demographic data, treatment costs, productivity losses, risks of catastrophic expenditures, etc., as well as parameters varied in Monte Carlo simulations and univariate sensitivity analyses
 
 * (2) /data_econ
   *  Directory containing raw data, data processing scripts and processed data for economic parameter inputs; see (1) for detail
