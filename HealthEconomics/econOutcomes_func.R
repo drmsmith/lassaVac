@@ -221,7 +221,7 @@ f_econOutcomes = function(vec_GID_0, # vector of countries
                      YLS = N_sequelae*life_exp_at_age_x,
                      YLS_disc = N_sequelae*(1/discRate)*(1-exp(-discRate*life_exp_at_age_x)))%>%
               # calculate DALYs for fever (community), hospitalization and death
-              mutate(DALY_fever = (N_symptoms-N_hospital)*DALYperpatient_fever_h, # DALYs for those with fever in community (no hospital)
+              mutate(DALY_fever = N_symptoms*DALYperpatient_fever_h, # DALYs for those with fever in community
                      DALY_hospital = (N_hospital-N_death)*DALYperpatient_hosp_survived_h + N_death*DALYperpatient_hosp_died_h,
                      DALY_sequelae = DALYperpatient_sequelae_annual_h*YLS,
                      DALY_sequelae_disc = DALYperpatient_sequelae_annual_h*YLS_disc,
@@ -233,8 +233,8 @@ f_econOutcomes = function(vec_GID_0, # vector of countries
                      Cost_VSLY = DALY_death_disc*VSLY_i)%>%
               # calculate DALY cost, outpatient costs, hospitalization costs (based on LOS and daily cost in Int_dollar)
               mutate(Cost_DALY_total = DALY_total*cost_daly_i,
-                     Cost_outpatient_gvt = (N_symptoms-N_hospital)*prob_treat_comm_gvt_h*cost_outpatientvisit_i,
-                     Cost_outpatient_oop = (N_symptoms-N_hospital)*prob_treat_comm_oop_h*cost_outpatientvisit_i,
+                     Cost_outpatient_gvt = N_symptoms*prob_treat_comm_gvt_h*cost_outpatientvisit_i,
+                     Cost_outpatient_oop = N_symptoms*prob_treat_comm_oop_h*cost_outpatientvisit_i,
                      Cost_hosp_gvt = N_hospital*cost_hosp_gvt_i,
                      Cost_hosp_oop = N_hospital*cost_hosp_oop_i)%>%
               # calculate OOP costs vs government care costs
@@ -340,12 +340,10 @@ f_econOutcomes = function(vec_GID_0, # vector of countries
                 
                 ### Total number of cases pruned
                 N_cases_pruned = N_cases_pruned_U + N_cases_pruned_V
-                if(vaccEff_infection == 0){N_cases_pruned = 0}
                 if(N_cases_pruned < 0){warning(paste0("negative cases pruned: ", N_cases_pruned))}
                 
                 ### Total number of cases averted = total cases minus total cases pruned
                 N_cases_averted = N_cases_total - N_cases_pruned
-                if(vaccEff_infection == 0){N_cases_averted = 0}
                 if(N_cases_averted < 0){warning(paste0("negative cases averted: ", N_cases_averted))}
                 
                 ### Calculate number of cases averted due to disease-prevention
@@ -387,7 +385,7 @@ f_econOutcomes = function(vec_GID_0, # vector of countries
                          YLS = N_sequelae*life_exp_at_age_x,
                          YLS_disc = N_sequelae*(1/discRate)*(1-exp(-discRate*life_exp_at_age_x)))%>%
                   # calculate DALYs for fever (community), hospitalization and death
-                  mutate(DALY_fever = (N_symptoms-N_hospital)*DALYperpatient_fever_h, # DALYs for those with fever in community (no hospital)
+                  mutate(DALY_fever = N_symptoms*DALYperpatient_fever_h, # DALYs for those with fever in community
                          DALY_hospital = (N_hospital-N_death)*DALYperpatient_hosp_survived_h + N_death*DALYperpatient_hosp_died_h,
                          DALY_sequelae = DALYperpatient_sequelae_annual_h*YLS,
                          DALY_sequelae_disc = DALYperpatient_sequelae_annual_h*YLS_disc,
@@ -399,8 +397,8 @@ f_econOutcomes = function(vec_GID_0, # vector of countries
                          Cost_VSLY = DALY_death_disc*VSLY_i)%>%
                   # calculate DALY cost, outpatient costs, hospitalization costs (based on LOS and daily cost in Int_dollar)
                   mutate(Cost_DALY_total = DALY_total*cost_daly_i,
-                         Cost_outpatient_gvt = (N_symptoms-N_hospital)*prob_treat_comm_gvt_h*cost_outpatientvisit_i,
-                         Cost_outpatient_oop = (N_symptoms-N_hospital)*prob_treat_comm_oop_h*cost_outpatientvisit_i,
+                         Cost_outpatient_gvt = N_symptoms*prob_treat_comm_gvt_h*cost_outpatientvisit_i,
+                         Cost_outpatient_oop = N_symptoms*prob_treat_comm_oop_h*cost_outpatientvisit_i,
                          Cost_hosp_gvt = N_hospital*cost_hosp_gvt_i,
                          Cost_hosp_oop = N_hospital*cost_hosp_oop_i)%>%
                   # calculate OOP costs vs government care costs
