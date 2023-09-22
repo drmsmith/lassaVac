@@ -1,0 +1,22 @@
+clinical_sign,baseline_n,baseline_N,post_n,post_N,disutility
+lymphadenopathy,11,15,42,133,0.051
+abnormal ecg,1,22,51,56,0.224
+conjunctivitis,131,736,233,977,0.015
+abdominal pain,660,1581,1594,3039,0.22
+diarrhoea,429,1612,1144,3120,0.146
+nausea,24,43,462,1482,0.112
+pharyngitis_sore throat_tonsillitis,786,2055,1025,2185,0.07
+vomiting,806,1631,1695,3077,0.112
+bleeding,334,1727,785,3387,0.325
+fever,1527,1730,3067,3300,0.051
+weakness,536,758,391,469,0.052
+anorexia,9,18,723,1829,0.224
+back pain,260,478,332,503,0.188
+encephalopathy,9,27,59,333,0.429
+headache,809,1622,2033,3200,0.037
+seizure,13,517,37,585,0.488
+shock,12,187,87,262,0.0535
+renal disorders,2,13,349,752,0.357
+reproductive disorders,2,7,28,96,0.324
+respiratory disorders,582,2401,1525,5863,0.217
+skin disorders,6,29,50,711,0.091
