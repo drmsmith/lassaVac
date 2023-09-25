@@ -32,12 +32,15 @@ df_burden_est_sub = left_join(ccodes, df_burden_est_sub, by='country')
 #################################################################
 # download worldpop un-adjusted data from 2016 (1km aggregated) #
 #################################################################
-
 source('LassaX/data_chik/utils.R')
 downlds = map(df_burden_est_sub$code, 
-              function(.x) downld_worldpop_UNadj1km(country = .x),
-              .progress = T) %>% unlist 
+              function(.x) {
+                  downld_worldpop_UNadj1km(country=.x, year='2015',
+                                           local_filepath='LassaX/data_chik/worldpop_2015/')
+                  }, .progress = T) %>% unlist 
 
+
+########## 2016 ################################################
 # codes_errors = c('BRA-brazil', 'COG-rep.congo', 'USA')
 # links_errors = c(
 #     'https://data.worldpop.org/GIS/Population/Global_2000_2020_1km_UNadj/2016/BRA/bra_ppp_2016_1km_Aggregated_UNadj.tif',
@@ -52,18 +55,19 @@ downlds = map(df_burden_est_sub$code,
 ###############################################################
 # sum across raster to get country-wide population estimates #
 ###############################################################
+# again remember to change year / dir name 
 
 # raster package works better than terra
-tif_files = list.files('LassaX/data_chik/worldpop/', '.tif') #%>%
+tif_files = list.files('LassaX/data_chik/worldpop_2015/', '.tif') #%>%
 #     str_remove_all(tif_fies, '_ppp_2016_UNadj.tif') %>% toupper
-tif_paths = tif_files %>% paste('LassaX/data_chik/worldpop/', ., sep='')
+tif_paths = tif_files %>% paste('LassaX/data_chik/worldpop_2015/', ., sep='')
 
 r_sums = map(tif_paths, 
               function(.x) {
                   r <- raster::raster(.x)
-                  rs <- raster::cellStats(r, "sum")
-                  code = str_remove_all(.x, '_ppp_2016_UNadj.tif')
-                  code = str_remove_all(code, 'LassaX/data_chik/worldpop/')
+                  rs <- raster::cellStats(r, "sum") # change year 
+                  code = str_remove_all(.x, '2015.tif') # _ppp_2016_UNadj
+                  code = str_remove_all(code, 'LassaX/data_chik/worldpop_2015/')
                   code = toupper(code)
                   return(list(code, rs))
                   },
@@ -84,4 +88,6 @@ complete_data$total_pop_size = as.double(complete_data$total_pop_size)
 # complete_data$p_spillover %>% plot
 # complete_data$p_spillover[complete_data$p_spillover<0.005]
 
-write.csv(complete_data, file='LassaX/data_chik/df_burden_with_pop_size.csv', row.names = F)
+# remember to change year 
+write.csv(complete_data, row.names = F, 
+          file='LassaX/data_chik/df_burden_with_pop_size_2015.csv')

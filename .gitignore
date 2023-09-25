@@ -4,6 +4,8 @@
 .Ruserdata
 LassaX/data/inputs_list*
 res
-LassaX/data_chik/worldpop
+LassaX/data_chik/worldpop_2015
+LassaX/data_chik/worldpop_2016
+LassaX/data_chik/df_burden_with_pop_size_2016.csv
 LassaX/data_chik/world_bank_pop
 LassaX/data_chik/worldpop_failed_packages.R

@@ -1,7 +1,7 @@
 downld_worldpop_UNadj1km <- function(country = 'BGR', year = '2016',
                                      local_filepath = 'LassaX/data_chik/worldpop'){
 
-    file_local <- paste0(local_filepath, "/", tolower(country), "_", dataset, ".tif")
+    file_local <- paste0(local_filepath, "/", tolower(country), "_", year, ".tif")
 
     wpgpHTTPS <- 'https://data.worldpop.org/GIS/Population/Global_2000_2020_1km_UNadj/'
     file_remote = paste0(wpgpHTTPS, year, '/', country, '/', tolower(country), 
