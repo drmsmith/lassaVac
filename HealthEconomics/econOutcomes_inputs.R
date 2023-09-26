@@ -16,11 +16,11 @@ discRate = 0.03
 
 ### parameter point values ###
 
-df_params_montecarlo = loadRData("J:/projects/lassa_vaccination/parameters_scenarios/params_montecarlo.Rdata")%>%
+df_params_montecarlo = loadRData(paste0(folder_econ_inputs, "params_montecarlo.Rdata"))%>%
   mutate(prob_treat_comm_oop = prob_treat_comm_any - prob_treat_comm_gvt)
 
 ### parameter values sensitivity analysis
-df_params_usa = loadRData("J:/projects/lassa_vaccination/parameters_scenarios/params_usa.Rdata")%>%
+df_params_usa = loadRData(paste0(folder_econ_inputs, "params_usa.Rdata"))%>%
   mutate(prob_treat_comm_oop = prob_treat_comm_any - prob_treat_comm_gvt)
 
 ###################################
