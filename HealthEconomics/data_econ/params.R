@@ -257,6 +257,9 @@ parvec_dur_fever = rnorm(n_sims_montecarlo, d_fever_mean, d_fever_sd)
 ### DURATION ILL PRE-HOSPITAL###
 ################################
 
+### these and following duration estimates from the LASCOPE study
+# https://www.sciencedirect.com/science/article/pii/S2214109X20305180?via%3Dihub
+
 d_ill_prehosp_q1 = 7
 d_ill_prehosp_m = 8
 d_ill_prehosp_q3 = 13
@@ -334,13 +337,6 @@ parvec_disutility_fever = rnorm(n_sims_montecarlo, daly_fever_mean, daly_fever_s
 ###########################
 ### Sequelae disutility ###
 ###########################
-
-# Proportions of Lassa fever survivors having different severities of hearing loss (Ficenec et al. 2020)
-
-prop_hearingloss_mild = 13/18
-prop_hearingloss_moderate = 4/18
-prop_hearingloss_severe = 0
-prop_hearingloss_profound = 1/18
 
 # Proportions of overall hearing loss based on GBD estimates from Nigeria 
 # (https://www.thelancet.com/cms/10.1016/S0140-6736(21)00516-X/attachment/a552cf62-9122-4b03-b1af-afce71be7e9e/mmc1.pdf)
