@@ -13,7 +13,7 @@
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 # 2. Packages and working directory ####
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
-setwd("HealthEconomics/data_econ")
+folder_econ_inputs = c("HealthEconomics/data_econ/") 
 
 options(scipen=999)
 options(digits = 3)
@@ -22,7 +22,7 @@ library(tidyr)
 library(readxl)
 library(purrr)
 
-WorldPop_Africa <- read_excel("Population_Africa_WorldPopADM1.xlsx")
+WorldPop_Africa <- read_excel(paste0(folder_econ_inputs, "Population_Africa_WorldPopADM1.xlsx"))
 
 
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
@@ -66,7 +66,7 @@ WorldPop_Africa <- read_excel("Population_Africa_WorldPopADM1.xlsx")
 # 4. Importing the scaled cost ####
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 # These are the scaled Out Of Pocket HC expenditures based in a study from Nigeria
-  load("scaling_master.rda")
+  load(paste0(folder_econ_inputs, "scaling_master.rda"))
 
 # Linking the OOP cost data to the master data file  
   poverty_master <- poverty_master %>%
