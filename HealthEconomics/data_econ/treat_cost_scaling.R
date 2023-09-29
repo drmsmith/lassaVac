@@ -10,7 +10,7 @@
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 # 2 Packages and working directory ####
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
-setwd("HealthEconomics/data_econ")
+folder_econ_inputs = c("HealthEconomics/data_econ/") 
 
 options(scipen=999)
 options(digits = 5)
@@ -23,7 +23,7 @@ library(dplyr)
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 
 # World Pop Data on Africa developed by Paul
-  WorldPop_Africa <- read_excel("WordPop_Africa_short.xlsx")
+  WorldPop_Africa <- read_excel(paste0(folder_econ_inputs, "WordPop_Africa_short.xlsx"))
   names(WorldPop_Africa)
   nrow(WorldPop_Africa)
   WorldPop_Africa <- WorldPop_Africa %>% distinct(GID_0, .keep_all = TRUE)
@@ -47,14 +47,14 @@ library(dplyr)
   # --> Avg Lassa treatment cost: N 205,559
   # 2. Convert to I$ with the exchange rate at the time of the costing (2016)
   # Note: WB data used (file name: PPP_conv_factor.xlsx)
-  PPP_conv_factor <- read_excel("PPP_conv_factor.xlsx")
+  PPP_conv_factor <- read_excel(paste0(folder_econ_inputs, "PPP_conv_factor.xlsx"))
   names(PPP_conv_factor)
   PPP_conv_factor %>% filter(GID_0 == "NGA")
   # --> PPP I$ conversion factor 2016 for NGA: 105.373917
   # --> 205559 / 105.373917 = 1950.758 I$
   # 3. Inflate using the US$ inflation rate (divide GDP deflator)
   # Note: WB data used (file name: GDP_deflator.xlsx)
-  GDP_deflator <- read_excel("GDP_deflator.xlsx")
+  GDP_deflator <- read_excel(paste0(folder_econ_inputs, "GDP_deflator.xlsx"))
   names(GDP_deflator)
   GDP_deflator %>% filter(GID_0 == "USA")
   # --> GDP_2021 / GDP_2016 = 113.568894993064 / 101.002235480218 = 1.12442
@@ -68,12 +68,12 @@ library(dplyr)
   
 # WB data on healthcare expenditures in Nigeria:
   # 1) Information on current per capita healthcare expenditure
-    PcHCexpend <- read_excel("Current expend HC IntPPP.xlsx")
+    PcHCexpend <- read_excel(paste0(folder_econ_inputs, "Current expend HC IntPPP.xlsx"))
     names(PcHCexpend)
     PcHCexpend %>% filter(GID_0 == "NGA")
     # Per Capita Healthcare Expenditure I$ PPP in 2016: 190.9473114 I$
   # 2) Information on share of OOP expenditure
-    OOP_proportion <- read_excel("OOP expend proportion.xlsx")  
+    OOP_proportion <- read_excel(paste0(folder_econ_inputs, "OOP expend proportion.xlsx"))  
     names(OOP_proportion)
     OOP_proportion %>% filter(GID_0 == "NGA")
     # Proportion of per Capita Healthcare Exp paid OOP I$ PPP in 2019: 70.52402496 (latest available estimate)
