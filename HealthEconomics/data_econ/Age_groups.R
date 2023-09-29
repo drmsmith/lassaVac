@@ -10,7 +10,9 @@
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 # 2. Packages and working directory ####
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
-setwd("HealthEconomics/data_econ")
+
+folder_econ_inputs = c("HealthEconomics/data_econ/") 
+
 
 options(scipen=999)
 options(digits = 3)
@@ -33,7 +35,7 @@ library(dplyr)
   # Note: Excel file adjusted for use in R
 
 # Data import
-  WPP2022 <- read_excel("WPP2022_POP_F01_1_POPULATION_SINGLE_AGE_BOTH_SEXES_for_R.xlsx")
+  WPP2022 <- read_excel(paste0(folder_econ_inputs, "WPP2022_POP_F01_1_POPULATION_SINGLE_AGE_BOTH_SEXES_for_R.xlsx"))
   names(WPP2022)
 
 # Converting single age variables into variable of class "numeric" 
@@ -52,7 +54,7 @@ library(dplyr)
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 # 4. Load Africa World Pop Data ####
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
-WorldPop_Africa <- read_excel("Population_Africa_WorldPopADM1.xlsx")
+WorldPop_Africa <- read_excel(paste0(folder_econ_inputs, "Population_Africa_WorldPopADM1.xlsx"))
   nrow(WorldPop_Africa)
   names(WorldPop_Africa)
   length(unique(WorldPop_Africa$GID_0))
@@ -317,7 +319,7 @@ summary(age_master$weighted_avg_age_A45_to_A59)
 summary(age_master$weighted_avg_age_A60_to_A83)
 
 # UN life expectancy by age based on Year 2020
-  UN_life_exp <- read_excel("WPP2022_MORT_F05_1_LIFE_EXPECTANCY_BY_AGE_BOTH_SEXES_short.xlsx")
+  UN_life_exp <- read_excel(paste0(folder_econ_inputs, "WPP2022_MORT_F05_1_LIFE_EXPECTANCY_BY_AGE_BOTH_SEXES_short.xlsx"))
     names(UN_life_exp)
     UN_life_exp <- UN_life_exp %>%
       select(c(Name_0, GID_0, A3, A11, A28, A52, A68)) %>%
