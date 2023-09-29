@@ -10,7 +10,8 @@
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 # 2. Packages and working directory ####
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
-setwd("HealthEconomics/data_econ")
+
+folder_econ_inputs = c("HealthEconomics/data_econ/") 
 
 options(scipen=999)
 options(digits = 3)
@@ -22,7 +23,7 @@ library(readxl)
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 # 3. World Pop Africa Data ####
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
-WorldPop_Africa <- read_excel("Population_Africa_WorldPopADM1.xlsx")
+WorldPop_Africa <- read_excel(paste0(folder_econ_inputs, "Population_Africa_WorldPopADM1.xlsx"))
   nrow(WorldPop_Africa)
   names(WorldPop_Africa)
   length(unique(WorldPop_Africa$GID_0))
@@ -35,7 +36,7 @@ WorldPop_Africa <- WorldPop_Africa[!duplicated(WorldPop_Africa$GID_0), ]
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 
 # GDP per capita (current US$) data from World Bank
-  gdp_pc_2021 <- read_excel("GDP_pC_for_R.xlsx")
+  gdp_pc_2021 <- read_excel(paste0(folder_econ_inputs, "GDP_pC_for_R.xlsx"))
 
 # Joining
   daly_master <- left_join(WorldPop_Africa, gdp_pc_2021, by = "GID_0")
@@ -69,7 +70,7 @@ daly_master$GID_1 <- NULL
   # "Estimating health opportunity costs in low-income and middle-income countries:
   # a novel approach and evidence from cross-country data." BMJ global health 3.6 (2018): e000964.
   
-daly_estimates <- read_excel("DALY_for_R.xlsx")
+daly_estimates <- read_excel(paste0(folder_econ_inputs, "DALY_for_R.xlsx"))
 
 daly_master <- left_join(daly_master, daly_estimates, by = "NAME_0")
 
