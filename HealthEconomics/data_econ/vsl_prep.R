@@ -10,7 +10,7 @@
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 # 2. Packages and working directory ####
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
-setwd("HealthEconomics/data_econ")
+folder_econ_inputs = c("HealthEconomics/data_econ/") 
 
 options(scipen=999)
 options(digits = 3)
@@ -22,7 +22,7 @@ library(readxl)
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 # 3. World Pop Africa Data ####
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
-WorldPop_Africa <- read_excel("Population_Africa_WorldPopADM1.xlsx")
+WorldPop_Africa <- read_excel(paste0(folder_econ_inputs, "Population_Africa_WorldPopADM1.xlsx"))
 nrow(WorldPop_Africa)
 names(WorldPop_Africa)
 length(unique(WorldPop_Africa$GID_0))
@@ -35,7 +35,7 @@ WorldPop_Africa <- WorldPop_Africa[!duplicated(WorldPop_Africa$GID_0), ]
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 
 # GDP per capita (current US$) data from World Bank
-  vsl <- read_excel("VSL_for_R.xlsx")
+  vsl <- read_excel(paste(folder_econ_inputs, "VSL_for_R.xlsx"))
 
 # Joining
   vsl_master <- left_join(WorldPop_Africa, vsl, by = "NAME_0")
