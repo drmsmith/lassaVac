@@ -15,11 +15,12 @@ LassaX/data_chik/world_bank_pop
 LassaX/data_chik/worldpop_failed_packages.R
 LassaX/chik_res
 
+# mobility data
 LassaX/data_chik/mobility/*.pdf
 LassaX/data_chik/mobility/*.csv
 
 
-## case_data 
+# case_data 
 case_data/*.pdf
 case_data/*.csv
 case_data/*.RData
@@ -27,3 +28,6 @@ case_data/*.xlsx
 case_data/*.jpg
 case_data/*.png
 case_data/Chikungunya*
+
+# suitability map 
+LassaX/2016_chikv_suitability.tif
