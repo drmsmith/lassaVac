@@ -3,7 +3,7 @@ library('tidyverse')
 library('deSolve')
 
 
-source("housekeeping.R")
+#source("housekeeping.R")
 source("LassaX/DiseaseX_ODEs.R")
 
 ###############
@@ -15,6 +15,7 @@ library('foreach')
 library('progress')
 
 # Progress combine function
+# a progress bar which does not work.... but worked in the example.... 
 f <- function(iterator){
   pb <- txtProgressBar(min = 1, max = iterator - 1, style = 3)
   count <- 0
@@ -39,14 +40,78 @@ clusterEvalQ(cl, source("LassaX/DiseaseX_ODEs.R"))
 
 
 
+### Burden data set by country with pop size 
+# df catchments in lassaX
+
+df_burden = read.csv('LassaX/data_chik/df_burden_with_pop_size_2015.csv')
+
+df_burden$mean_incidence = df_burden$infections_mean / df_burden$total_pop_size
+df_burden$max_incidence = df_burden$infections_max / df_burden$total_pop_size
+
+### Probability of spillover in each catchment area
+n_spillover = sum(df_burden$infections_mean)
+### Add column for the proportion of all spillovers occurring in each catchment
+df_burden$p_spillover = df_burden$infections_mean/n_spillover
+
+mat_mob_p = read.csv("LassaX/data_chik/mat_mob_prob.csv")
+all_codes = colnames(mat_mob_p)
+rownames(mat_mob_p) = all_codes
+
+df_burden = df_burden[df_burden$code %in% all_codes,]
+
+
+### initial conditions
+list_initial_conditions = get(load("LassaX/data_chik/inputs_list_initial_conditions.RData"))
+
+
+n_sim = 2
+output_set = 1 
+
+
+
+### Set 1 ###
+# Long output, 1 simulation
+# vaccine 50%, 70% or 90% effective against infection
+# no immunity at outset (propImmun = 0)
+# allocate vac to recovereds and susceptibles (parVacStrat = 2)
+# 10% wastage of vaccine doses
+# 2 year time horizon for each outbreak in each district
+if(output_set == 1){
+  output_format = "output_long"
+  first_sim = 1
+  n_simulations = 1 # a single simulation
+  vec_vacc_eff = c(0.5, 0.7,0.9) # effective rate of vaccination
+  par_propImmun = 0 # proportion immune upon simulation onset
+  par_parVacStrat = 2 # vaccine allocation strategy (see ODEs)
+  wastage = 0.1
+  n_duration_j = 365*2 # duration of simulation within each district
+}
+
+### Set 2 ###
+# Brief output, 100 simulations
+# vaccine 90% effective against infection
+# no immunity at outset (propImmun = 0)
+# allocate vac to recovereds and susceptibles (parVacStrat = 2)
+# 10% wastage of vaccine doses
+# 2 year time horizon for each outbreak in each district
+if(output_set == 2){
+  output_format = "output_brief"
+  first_sim = 1
+  n_simulations = n_sim # a single simulation
+  vec_vacc_eff = c(0, 0.5, 0.7,0.9) # effective rate of vaccination
+  par_propImmun = 0 # proportion immune upon simulation onset
+  par_parVacStrat = 2 # vaccine allocation strategy (see ODEs)
+  wastage = 0.1
+}
+
 ################
 ### ODE LOOP ###
 ################
 
 ### For each set of initial conditions
 # .packages = c('magrittr', 'tidyverse', 'deSolve')
-foreach(simulation_i = icount(n_simulations), .combine = f(n_simulations)) %dopar% {
-# for(simulation_i in first_sim:n_simulations){
+# foreach(simulation_i = icount(n_simulations), .combine = f(n_simulations)) %dopar% {
+for(simulation_i in first_sim:n_simulations){
   
   qounter = 0
   list_diseaseX_i = list()
@@ -195,7 +260,8 @@ foreach(simulation_i = icount(n_simulations), .combine = f(n_simulations)) %dopa
     }
   }
   
-  save(list_diseaseX_i, file = paste0("res/list_diseaseX_i_outputSet_", output_set, "_simulation_", simulation_i,".Rdata"))
+  save(list_diseaseX_i, file = paste0("res/list_diseaseX_i_outputSet_", 
+                                      output_set, "_simulation_", simulation_i,".Rdata"))
   
   qounter = 0
   list_diseaseX_i = list()

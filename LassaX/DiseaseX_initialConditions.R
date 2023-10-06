@@ -2,10 +2,15 @@
 ### MODEL INITIAL CONDITIONS ###
 ################################
 
-fix_accents = F
-source("housekeeping.R")
+df_district_names = read.csv("LassaX/data_chik/df_burden_with_pop_size_2015.csv")
+
 
 # for any given m_spread as simulated through gravity model, function to establish corresponding initial conditions for ODEs
+
+# there are seven initial conditions with this model 
+# no vac, 3x vac rates, 2x vac efficiencies 
+
+
 
 f_initialConditions = function(m_spread,
                                n_inits = 50,
@@ -15,7 +20,7 @@ f_initialConditions = function(m_spread,
   ### Based on gravity spread, determine timing of outbreaks and vaccination, and doses of vaccine
   m_spread_conditions = matrix(NA, nrow = nrow(m_spread), ncol = 3)
   rownames(m_spread_conditions) = rownames(m_spread)
-  colnames(m_spread_conditions) = c("GID_1", "initial_size", "timing")
+  colnames(m_spread_conditions) = c("code", "initial_size", "timing")
   
   ### assume initial sizes upon outbreak detection are exponentially decreasing from n = n_inits at outbreak onset to n = n_subs at 1 year
   rate_decline_inits = -log(n_subs/n_inits)/365
@@ -40,7 +45,7 @@ f_initialConditions = function(m_spread,
     
     
     # update matrix with these values
-    m_spread_conditions[catchment_i, "GID_1"] = catchment_i
+    m_spread_conditions[catchment_i, "code"] = catchment_i
     m_spread_conditions[catchment_i, "initial_size"] = initial_size
     m_spread_conditions[catchment_i, "timing"] = timing_i
   }
@@ -49,7 +54,7 @@ f_initialConditions = function(m_spread,
   # select only the districts that have any transmission
   df_spread_conditions = as.data.frame(m_spread_conditions)%>%
     left_join(df_district_names %>% 
-                dplyr::select(GID_1, COUNTRY, Population_raster), by = "GID_1") %>%
+                dplyr::select(code, country, total_pop_size), by = "code") %>%
     filter(!is.na(initial_size)) %>%
     mutate(initial_size = as.numeric(initial_size),
            timing = as.numeric(timing))
@@ -71,9 +76,10 @@ f_initialConditions = function(m_spread,
     
     df_runawayOutbreaks_catchments_doses_i = df_spread_conditions%>%
       mutate(dosing = par_doses_percent_i,
-             par_doses = Population_raster*par_doses_percent_i/365)
+             par_doses = total_pop_size*par_doses_percent_i/365)
     
-    df_runawayOutbreaks_catchments_doses = rbind(df_runawayOutbreaks_catchments_doses, df_runawayOutbreaks_catchments_doses_i)
+    df_runawayOutbreaks_catchments_doses = rbind(df_runawayOutbreaks_catchments_doses,
+                                                 df_runawayOutbreaks_catchments_doses_i)
   }
   
   ### with vaccine: update timing and initial conditions
@@ -122,17 +128,56 @@ f_initialConditions = function(m_spread,
 ########################################################################
 
 ### Load gravity spread list needed to inform initial conditions
-list_gravity_spread = loadRData("LassaX/data/inputs_list_gravity_spread.Rdata")
+list_gravity_spread = get(load("LassaX/data_chik/inputs_list_gravity_spread.RData"))
 
 ### Determine initial conditions for each element of list_gravity_spread
 list_initial_conditions = list()
-for(gravity_spread_i in 1:length(list_gravity_spread)){
-  print(paste0("calculating initial conditions for gravity model run ",
-               gravity_spread_i, " of ", length(list_gravity_spread)))
+for(gravity_spread_i in 1:length(list_gravity_spread)) {
+  print(
+    paste0(
+      "calculating initial conditions for gravity model run ",
+      gravity_spread_i,
+      " of ",
+      length(list_gravity_spread)
+    )
+  )
   
   list_initial_conditions[[gravity_spread_i]] = f_initialConditions(list_gravity_spread[[gravity_spread_i]])
   
 }
 
 ### Save initial conditions
-# save(list_initial_conditions, file = "LassaX/data/inputs_list_initial_conditions.RData")
+# save(list_initial_conditions, file = "LassaX/data_chik/inputs_list_initial_conditions.RData")
+
+
+old_list = get(load(file = "LassaX/data/inputs_list_gravity_spread.RData"))
+load(file = "LassaX/data/inputs_list_initial_conditions.RData")
+
+# check different values and their relative occurrence 
+map(list_initial_conditions, function(.x) .x$Doses0) %>% unlist %>% unique %>% sort
+list_initial_conditions[[3]]
+
+
+# or old_list
+spread_sums = map(list_gravity_spread, function(.x) {
+  spread_sums = apply(.x, 1, function(row) sum(row!=0)) 
+  spread_sums[spread_sums!=0] %>% sort(decreasing = T) %>% print 
+} )
+
+map(list_gravity_spread, function(.x) {
+  spread_sums = apply(.x, 1, function(row) sum(row!=0)) 
+  spread_sums[spread_sums!=0] %>% sort(decreasing = T) %>% length %>% print 
+} ) %>% unlist %>% table
+
+countries_spread = spread_sums %>% unlist %>% names(.) %>% table %>% sort(decreasing = T) 
+length(countries_spread)
+
+
+plot(countries_spread, ylim=c(0,30), srt=270, xlab='')
+text(countries_spread+3, labels=names(countries_spread), srt=75, col='red')
+
+spread_sums = apply(old_list[[2]], 1, function(row) sum(row!=0)) 
+spread_sums[spread_sums!=0] %>% sort(decreasing = T) %>% print 
+spread_sums[spread_sums!=0] %>% length
+
+list_initial_conditions[[1]] 

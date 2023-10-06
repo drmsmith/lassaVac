@@ -1,10 +1,9 @@
-library(tidyverse)
-library(deSolve)
-library(ggsci)
-library(scales)
-library(cowplot)
+library('tidyverse')
+library('deSolve')
+library('ggsci')
+library('scales')
+library('cowplot')
 
-fix_accents = F
 
 loadRData <- function(fileName){
   #loads an RData file, and returns it
@@ -14,15 +13,6 @@ loadRData <- function(fileName){
 
 ## Dataframe: catchment names, fix accents
 df_district_names = read.csv("LassaX/data/catchments_zoonosis_lat_lon.csv")
-
-if(fix_accents == T){
-  df_district_names$NAME_1 <- gsub("\xe9", "é", df_district_names$NAME_1)
-  df_district_names$NAME_1 <- gsub("\xfa", "ú", df_district_names$NAME_1)
-  df_district_names$NAME_1 <- gsub("\xe8", "è", df_district_names$NAME_1)
-  df_district_names$NAME_1 <- gsub("\xe1", "á", df_district_names$NAME_1)
-  df_district_names$NAME_1 <- gsub("\xf4", "ô", df_district_names$NAME_1)
-  df_district_names$NAME_1 <- gsub("Federal Capital Territory", "FCT", df_district_names$NAME_1)
-}
 
 
 vec_GID_0 = levels(factor(df_district_names$GID_0))
@@ -43,12 +33,12 @@ cols_outbreak_detection = c("#e41a1c")
 
 
 
-# function to estimate beta parameters
-estBetaParams <- function(mu, var) {
-  alpha <- ((1 - mu) / var - 1 / mu) * mu ^ 2
-  beta <- alpha * (1 / mu - 1)
-  return(params = list(alpha = alpha, beta = beta))
-}
+# # function to estimate beta parameters
+# estBetaParams <- function(mu, var) {
+#   alpha <- ((1 - mu) / var - 1 / mu) * mu ^ 2
+#   beta <- alpha * (1 / mu - 1)
+#   return(params = list(alpha = alpha, beta = beta))
+# }
 
 
 ### function to estimate mean and SD from quartiles
@@ -69,22 +59,22 @@ estBetaParams <- function(mu, var) {
 
 # X = mean; S = standard deviation; q1 = 1st quartile; q3 = 3rd quartile; m = median; n = sample size
 
-# function to derive mean and SD from quartiles and n
-f_dist_from_quartiles = function(q1, m, q3, n){
-  
-  # approximate mean (per Wan et al.)
-  X = (q1 + m + q3)/3
-  
-  # approximate sd (per Wan et al.)
-  S = ((q3 - q1)/(f_eta(n)))
-  
-  # determine shape and scale parameters from X and S
-  shape = (X/S)^2
-  scale = S^2/X
-  
-  result = c('X' = X, 'S' = S, 'shape' = shape, 'scale' = scale)
-  return(result)
-}
+# # function to derive mean and SD from quartiles and n
+# f_dist_from_quartiles = function(q1, m, q3, n){
+#   
+#   # approximate mean (per Wan et al.)
+#   X = (q1 + m + q3)/3
+#   
+#   # approximate sd (per Wan et al.)
+#   S = ((q3 - q1)/(f_eta(n)))
+#   
+#   # determine shape and scale parameters from X and S
+#   shape = (X/S)^2
+#   scale = S^2/X
+#   
+#   result = c('X' = X, 'S' = S, 'shape' = shape, 'scale' = scale)
+#   return(result)
+# }
 
 
 
@@ -136,7 +126,7 @@ if(output_set == 1){
 if(output_set == 2){
   output_format = "output_brief"
   first_sim = 1
-  n_simulations = 5#100 # a single simulation
+  n_simulations = 100 # a single simulation
   vec_vacc_eff = c(0, 0.5, 0.7,0.9) # effective rate of vaccination
   par_propImmun = 0 # proportion immune upon simulation onset
   par_parVacStrat = 2 # vaccine allocation strategy (see ODEs)
@@ -151,18 +141,18 @@ if(output_set == 2){
 ### load data ###
 #################
 
-### Ebola catchments
-df_catchments_ebola = read.csv("LassaX/data/inputs_df_catchments_ebola.csv")
-
-### Ebola Rt curves
-list_Rt_ebola_i = loadRData("LassaX/data/inputs_list_Rt_curves.Rdata")
-
-### Lassa catchments
-df_catchments_lassa = read.csv("LassaX/data/catchments_zoonosis_lat_lon.csv",
-                               stringsAsFactors = F)
-
-### Lassa-X initial conditions
-list_initial_conditions = loadRData("LassaX/data/inputs_list_initial_conditions.Rdata")
+# ### Ebola catchments
+# df_catchments_ebola = read.csv("LassaX/data/inputs_df_catchments_ebola.csv")
+# 
+# ### Ebola Rt curves
+# list_Rt_ebola_i = loadRData("LassaX/data/inputs_list_Rt_curves.Rdata")
+# 
+# ### Lassa catchments
+# df_catchments_lassa = read.csv("LassaX/data/catchments_zoonosis_lat_lon.csv",
+#                                stringsAsFactors = F)
+# 
+# ### Lassa-X initial conditions
+# list_initial_conditions = loadRData("LassaX/data/inputs_list_initial_conditions.Rdata")
 
 ##################
 ### DRAWING RT ###
