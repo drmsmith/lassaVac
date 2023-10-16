@@ -14,6 +14,7 @@ LassaX/data_chik/2015_p_spillover.pdf
 LassaX/data_chik/world_bank_pop
 LassaX/data_chik/worldpop_failed_packages.R
 LassaX/chik_res
+LassaX/interim_outputs
 
 # mobility data
 LassaX/data_chik/mobility/*.pdf
@@ -31,3 +32,8 @@ case_data/Chikungunya*
 
 # suitability map 
 LassaX/2016_chikv_suitability.tif
+
+
+# chikX data 
+chikX/preprocessing
+chikX/handover_docs
