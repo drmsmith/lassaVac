@@ -59,56 +59,58 @@ f_initialConditions = function(m_spread,
     mutate(initial_size = as.numeric(initial_size),
            timing = as.numeric(timing))
   
-  ### create dataframe combining all initial conditions
-  df_runawayOutbreaks_catchments_doses = data.frame()
+  # ### create dataframe combining all initial conditions
+  # df_runawayOutbreaks_catchments_doses = data.frame()
   
-  ### no vaccine
-  df_runawayOutbreaks_catchments_noVaccine = df_spread_conditions%>%
-    mutate(dosing = 0,
-           par_doses = 0,
-           strategy = "none",
-           vacc_timing = Inf,
-           V0 = 0,
-           Doses0 = 0)
+  # ### no vaccine
+  # df_runawayOutbreaks_catchments_noVaccine = df_spread_conditions%>%
+  #   mutate(dosing = 0,
+  #          par_doses = 0,
+  #          strategy = "none",
+  #          vacc_timing = Inf,
+  #          V0 = 0,
+  #          Doses0 = 0)
+  # 
+  # ### with vaccine: base scenarios
+  # for(par_doses_percent_i in vec_par_doses_percent_annual){
+  #   
+  #   df_runawayOutbreaks_catchments_doses_i = df_spread_conditions%>%
+  #     mutate(dosing = par_doses_percent_i,
+  #            par_doses = total_pop_size*par_doses_percent_i/365)
+  #   
+  #   df_runawayOutbreaks_catchments_doses = rbind(df_runawayOutbreaks_catchments_doses,
+  #                                                df_runawayOutbreaks_catchments_doses_i)
+  # }
+  # 
+  # ### with vaccine: update timing and initial conditions
+  # # 100d delay to vaccination
+  # df_runawayOutbreaks_catchments_Vaccine100d = df_runawayOutbreaks_catchments_doses%>%
+  #   mutate(strategy = "same_everywhere_100d",
+  #          vacc_timing = case_when(100 < timing ~ 0,
+  #                                  T ~ 100 - timing),
+  #          V0 = case_when(100 > timing ~ 0,
+  #                         T ~ par_doses * (timing - 100)),
+  #          Doses0 = case_when(100 > timing ~ 0,
+  #                             T ~ par_doses * (timing - 100)))
+  # 
+  # # 160d delay to vaccination
+  # df_runawayOutbreaks_catchments_Vaccine160d = df_runawayOutbreaks_catchments_doses%>%
+  #   mutate(strategy = "same_everywhere_160d",
+  #          vacc_timing = case_when((100+60) < timing ~ 0,
+  #                                  T ~ (100+60) - timing),
+  #          V0 = case_when((100+60) > timing ~ 0,
+  #                         T ~ par_doses * (timing - (100+60))),
+  #          Doses0 = case_when((100+60) > timing ~ 0,
+  #                             T ~ par_doses * (timing - (100+60))))
+  # 
+  # ### Combine all 3
+  # df_runawayOutbreaks_catchmentsFinal = rbind(rbind(df_runawayOutbreaks_catchments_noVaccine,
+  #                                                   df_runawayOutbreaks_catchments_Vaccine100d),
+  #                                             df_runawayOutbreaks_catchments_Vaccine160d)
   
-  ### with vaccine: base scenarios
-  for(par_doses_percent_i in vec_par_doses_percent_annual){
-    
-    df_runawayOutbreaks_catchments_doses_i = df_spread_conditions%>%
-      mutate(dosing = par_doses_percent_i,
-             par_doses = total_pop_size*par_doses_percent_i/365)
-    
-    df_runawayOutbreaks_catchments_doses = rbind(df_runawayOutbreaks_catchments_doses,
-                                                 df_runawayOutbreaks_catchments_doses_i)
-  }
-  
-  ### with vaccine: update timing and initial conditions
-  # 100d delay to vaccination
-  df_runawayOutbreaks_catchments_Vaccine100d = df_runawayOutbreaks_catchments_doses%>%
-    mutate(strategy = "same_everywhere_100d",
-           vacc_timing = case_when(100 < timing ~ 0,
-                                   T ~ 100 - timing),
-           V0 = case_when(100 > timing ~ 0,
-                          T ~ par_doses * (timing - 100)),
-           Doses0 = case_when(100 > timing ~ 0,
-                              T ~ par_doses * (timing - 100)))
-  
-  # 160d delay to vaccination
-  df_runawayOutbreaks_catchments_Vaccine160d = df_runawayOutbreaks_catchments_doses%>%
-    mutate(strategy = "same_everywhere_160d",
-           vacc_timing = case_when((100+60) < timing ~ 0,
-                                   T ~ (100+60) - timing),
-           V0 = case_when((100+60) > timing ~ 0,
-                          T ~ par_doses * (timing - (100+60))),
-           Doses0 = case_when((100+60) > timing ~ 0,
-                              T ~ par_doses * (timing - (100+60))))
-  
-  ### Combine all 3
-  df_runawayOutbreaks_catchmentsFinal = rbind(rbind(df_runawayOutbreaks_catchments_noVaccine,
-                                                    df_runawayOutbreaks_catchments_Vaccine100d),
-                                              df_runawayOutbreaks_catchments_Vaccine160d)
-  
-  return(df_runawayOutbreaks_catchmentsFinal)
+
+  # return(df_runawayOutbreaks_catchmentsFinal)
+  return(df_spread_conditions)
 }
 
 ############
@@ -128,7 +130,8 @@ f_initialConditions = function(m_spread,
 ########################################################################
 
 ### Load gravity spread list needed to inform initial conditions
-list_gravity_spread = get(load("LassaX/data_chik/inputs_list_gravity_spread.RData"))
+# list_gravity_spread = get(load("LassaX/data_chik/inputs_list_gravity_spread.RData"))
+list_gravity_spread = get(load("LassaX/data_chik/inpts_ls_spread_updtd.RData"))
 
 ### Determine initial conditions for each element of list_gravity_spread
 list_initial_conditions = list()
@@ -148,8 +151,9 @@ for(gravity_spread_i in 1:length(list_gravity_spread)) {
 
 ### Save initial conditions
 # save(list_initial_conditions, file = "LassaX/data_chik/inputs_list_initial_conditions.RData")
+save(list_initial_conditions, file = "LassaX/data_chik/inputs_ls_initial_conditions_updt.RData")
 
-
+## compare to lassa (called ol_list (which is gone))
 old_list = get(load(file = "LassaX/data/inputs_list_gravity_spread.RData"))
 load(file = "LassaX/data/inputs_list_initial_conditions.RData")
 

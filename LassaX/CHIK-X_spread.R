@@ -13,10 +13,14 @@ n_spillover = sum(df_burden$infections_mean)
 ### Add column for the proportion of all spillovers occurring in each catchment
 df_burden$p_spillover = df_burden$infections_mean/n_spillover
 
-mat_mob_p = read.csv("LassaX/data_chik/mat_mob_prob.csv")
+mat_mob_p = read.csv("LassaX/data_chik/mat_mob_prob_fudge.csv")
+#mat_mob_p = read.csv("LassaX/data_chik/mat_mob_prob.csv")
 all_codes = colnames(mat_mob_p)
 rownames(mat_mob_p) = all_codes
-mat_mob_prob[is.na(mat_mob_prob)] = 0
+mat_mob_p = as.matrix(mat_mob_p)
+
+# 0 for NAs if needed 
+# mat_mob_p[is.na(mat_mob_p)] = 0
 
 # update burden df because no mobility information available for 
 # five regions (see mobility_provessing.R)
@@ -72,6 +76,8 @@ f_gravity_model = function(duration_spread = 365*2, doPrint = F){
 }
 
 
+
+
 ### TEST
 # m_spread = f_gravity_model(doPrint = T)
 # which(m_spread[,1] == 1)
@@ -80,7 +86,8 @@ f_gravity_model = function(duration_spread = 365*2, doPrint = F){
 # which(m_spread[,365*2] == 0)
 
 m_spread1 = f_gravity_model()
-apply(m_spread1, 1, sum) %>% .[.!=0] %>% sort(decreasing = T)
+apply(m_spread1, 1, sum) %>% .[.!=0] %>% sort(decreasing = T) %>% length
+
 
 ###################################
 ### RUN N TIMES AND SAVE OUTPUT ###
@@ -103,21 +110,50 @@ list_gravity_spread = purrr::map(
 
 
 #### SAVE OUTPUT #### 
-save(list_gravity_spread, file = "LassaX/data_chik/inputs_list_gravity_spread.RData")
+#save(list_gravity_spread, file = "LassaX/data_chik/inpts_ls_spread_updtd.RData")
+# old list with n_trips/pop_size * preval is saved below 
+#save(list_gravity_spread, file = "LassaX/data_chik/inputs_list_gravity_spread.RData")
 
 
 # preview results 
 # frequency of number of spreads to other places 
-map(list_gravity_spread, function(.x) {
+purrr::map(list_gravity_spread, function(.x) {
     spread_sums = apply(.x, 1, function(row) sum(row!=0)) 
     spread_sums[spread_sums!=0] %>% sort(decreasing = T) %>% length 
 } ) %>% unlist %>% table
+#    hist(breaks=15, main='', xlab='n chain countries') # %>% table
 
 
-spread_sums = map(list_gravity_spread, function(.x) {
+all_out_len = purrr::map(list_gravity_spread, function(.x) {
+    spread_sums = apply(.x, 1, function(row) sum(row!=0)) 
+    spread_sums[spread_sums!=0] %>% sort(decreasing = T) %>% length 
+} ) %>% unlist %>% table# %>% hist(breaks=15)
+
+df_out_len = data.frame(all_out_len)
+colnames(df_out_len) = c('n_countries', 'freq')
+plot(df_out_len, pch=20)
+
+
+spread_sums = purrr::map(list_gravity_spread, function(.x) {
     spread_sums = apply(.x, 1, function(row) sum(row!=0)) 
     spread_sums[spread_sums!=0] %>% sort(decreasing = T) 
 } )
+
+map(seq_along(spread_sums), function(i) {
+    .sim = spread_sums[[i]] %>% sort(decreasing = T)
+    data.frame(t_i = (365*2 - unname(.sim)), country = names(.sim), n_sim = i) 
+}) %>% bind_rows %>% 
+    ggplot(aes(t_i, country)) + 
+    geom_point(aes(color=t_i), alpha=0.75) +
+    facet_wrap(~n_sim, nrow = 5) + theme_light()
+
+
+purrr::map(list_gravity_spread, function(.x) {
+    spread_sums = apply(.x, 1, function(row) sum(row!=0)) 
+    spread_sums[spread_sums!=0] %>% sort(decreasing = T) %>% length 
+} ) %>% unlist %>% 
+    hist(breaks=50, main='', xlab='n chain countries') # %>% table
+
 
 # which countries appear most frequently  
 countries_spread = spread_sums %>% unlist %>% names(.) %>% table %>% sort(decreasing = T)

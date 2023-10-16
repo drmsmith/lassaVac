@@ -2,31 +2,56 @@ library('tidyverse')
 
 # y=\frac{a\cdot2}{\left(\left(e^{\left(x-h\right)\cdot s_{l}}\right)+\left(e^{\left(-x+h\right)\cdot s_{r}}\right)\right)}
 
-all_files = list.files('LassaX/chik_res/', 'list_diseaseX_i_outputSet_2')[1:10]
+all_files = list.files('LassaX/chik_res/', 'list_diseaseX_i_outputSet_2') %>%
+    str_sort(numeric = TRUE) %>% .[1:20]
 
 
 # extract final df with summary res 
-all_params = map(all_files[1:4], function(dirname){
+all_params = map(all_files, function(dirname){
     res = get(load(paste('LassaX/chik_res/', dirname, sep='')))
-    map(res, function(.x) .x$health_econ[,1:9]) %>% bind_rows
+    map(res, function(.x) .x$health_econ) %>% bind_rows
 }) %>% bind_rows
 
 # id=c('country','code','timing','infect0','simulation','vacc_alloc','vacc_strategy')
 
 
-# the ugliest plot to have graced this planet yet
+# TIME 
 ggplot(all_params, aes(time_years, cases_sim)) + 
-    geom_point(aes(color=timing), alpha=0.2) +  # size=timing
-    facet_grid(vacc_strategy~country, scales = 'free_y') + theme_bw()
+    geom_point(aes(color=timing), size=1, alpha=0.2) +  # size=timing
+    facet_wrap(~simulation, scales = 'free_y', nrow = 4) + 
+    theme_bw()
 
+# COUNTRY
+ggplot(all_params, aes(time_years, cases_sim)) + 
+    geom_point(aes(color=code), size=1, alpha=0.2) +  # size=timing
+    facet_wrap(~simulation, scales = 'free_y', nrow = 4) + 
+    theme_bw()
+
+
+
+
+# the ugliest plot to have graced this planet yet
+# ggplot(all_params, aes(time_years, cases_sim)) + 
+#     geom_point(aes(color=timing), size=1, alpha=0.2) +  # size=timing
+#     facet_grid(vacc_strategy~country, scales = 'free_y') + theme_bw()
+# 
 
 
 all_params$simulation %>% unique %>% sort %>% identical(1:100)
 
-res = get(load(paste('LassaX/chik_res/', all_files[5], sep='')))
+res = get(load(paste('LassaX/chik_res/', all_files[2], sep='')))
 # map(res, function(.x) .x$health_econ) %>% bind_rows
 # map(res, function(.x) .x$params) %>% bind_rows
 
+res 
+df_res2 = map(res, function(.x) .x$health_econ) %>% bind_rows
+
+df_res2[df_res2$country=='Oman','timing'] %>% unique
+df_res2[df_res2$country=='India','timing'] %>% unique
+df_res2[df_res2$country=='Pakistan','timing'] %>% unique
+
+
+ 
 ti = res[[29]]$health_econ$timing
 dt = res[[29]]$params$dt
 xs = res[[29]]$params$xs
