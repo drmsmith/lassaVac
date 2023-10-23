@@ -37,3 +37,9 @@ LassaX/2016_chikv_suitability.tif
 # chikX data 
 chikX/preprocessing
 chikX/handover_docs
+
+# chikX reuslts and plots
+chikX/diagnostics_2/
+chikX/diagnostics_new/
+chikX/diagnostics_new_3/
+chikX/diagnostics_old_shapes_no_zeros/
