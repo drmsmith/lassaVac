@@ -46,7 +46,7 @@ res=list_diseaseX_i
 # map(res, function(.x) .x$params) %>% bind_rows
 
 res 
-df_res2 = map(res, function(.x) .x$health_econ) %>% bind_rowsfr
+df_res2 = map(res, function(.x) .x$health_econ) %>% bind_rows
 head(df_res2)
 
 df_timing = df_res2[,c('timing', 'code')] %>% unique 
