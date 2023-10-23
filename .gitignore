@@ -1,4 +1,6 @@
 # ignore preprocessing for now
 preprocessing
+
 figs
 .Rproj.user
+handover_and_TODO.pptx
