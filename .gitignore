@@ -1,2 +1,4 @@
 # ignore preprocessing for now
 preprocessing
+figs
+.Rproj.user

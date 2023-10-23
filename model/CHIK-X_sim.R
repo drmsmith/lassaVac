@@ -5,8 +5,9 @@ library('tidyverse')
 ##############
 
 # utility funcs 
-source('chikX/model/utils.R')
-curve_shape_params = read.csv("chikX/data/shape_params_PAHO_cases_adj.csv")
+source('model/utils.R')
+
+# curve_shape_params = read.csv("data/shape_params_PAHO_cases_adj.csv")
 # curve_shape_params$peak_time_abs = sample_params$peak_time - sample_params$t_min
 # write.csv(curve_shape_params, file='chikX/data/shape_params_PAHO_cases_adj.csv', row.names=F)
 

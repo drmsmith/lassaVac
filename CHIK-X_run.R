@@ -4,31 +4,39 @@
 
 ### ESTIMATED BURDEN DATA SET BY COUNTRY WITH POP SIZE  
 # df catchments in lassaX
-df_burden = read.csv('chikX/data/df_burden_with_pop_size_2015_spillover.csv')
+# df contains info on country, code, estimtd infections (mean/min/max)
+# p spillover = n_infections / total
+# p establishment and peak size sampled from estimtd infections (mean/min/max)
+df_burden = read.csv('data/df_burden_with_pop_size_2015_spillover.csv')
 
 # LOAD MOBILITY MATRIX FOR COUNTRY CODES WITH MOBILITY DATA
-# currently using a fudge factor one
-mat_mob_p = read.csv('chikX/data/mat_mob_prob_fudge.csv')
+# currently using a fudge factor 5
+# probability of moving between any two locations
+mat_mob_p = read.csv('data/mat_mob_prob_fudge.csv')
 # ENSURE THAT THE ROWS ARE NAMED, 
 # AS THESE NAMES ARE USED BY THE FUNCTIONS SOURCED BELOW  
 all_codes = colnames(mat_mob_p)
 rownames(mat_mob_p) = all_codes
 
 # SHAPE PARAMETERS TO BE SAMPLED FROM
-curve_shape_params = read.csv("chikX/data/shape_params_PAHO_cases_adj.csv")
+# based on PAHO outbreak data 
+# sampling parameters from curve fits to simulate outbreaks 
+curve_shape_params = read.csv("data/shape_params_PAHO_cases_adj.csv")
 
 
 # utility funcs 
-source('chikX/model/utils.R')
+source('model/utils.R')
 # modelling spread
-source('chikX/model/CHIK-X_spread.R')
+source('model/CHIK-X_spread.R')
 # setting initial conditions
-source('chikX/model/CHIK-X_init_conditions.R')
+source('model/CHIK-X_init_conditions.R')
 # modelling daily infections / sampling curve shapes
-source('chikX/model/CHIK-X_sim.R')
+source('model/CHIK-X_sim.R')
 
 
+# SOME OTHER PARAMETERS TO BE SET 
 
+set.seed(231023)
 n_simulations = 100
 
 # RUN SPREAD MODEL TO SIMULATE
@@ -36,10 +44,13 @@ n_simulations = 100
 # ITS POTNETIAL SPREAD TO NEW LOCATIONS
 # runtime: takes about 3 min to run 100 sims
 list_gravity_spread = f_gravity_model_run(
-    .df_catchments = df_burden,
+    # returns a list of matrices where rows = countries and cols = days 
+    .df_catchments = df_burden,  # p spillover and establishment
+    .mat_mob = mat_mob_p,       # matrix of pairwise probability of movement 
+    .duration_spread = 365*2,   # duration of spread simulation in days 
     .n_spread_matrices = n_simulations,
-    .save_res = TRUE,
-    .dest_dir = 'chikX/data'
+    .save_res = TRUE,           # will save a file named inputs_ls_spread.RData
+    .dest_dir = 'data'          # in specified destination directory 
     )
 
 
@@ -48,8 +59,8 @@ list_gravity_spread = f_gravity_model_run(
 # runtime: pretty quick
 list_initial_conditions = f_initialConditions_run(
     list_gravity_spread = list_gravity_spread,
-    .save_res = TRUE,
-    .dest_dir = 'chikX/data'
+    .save_res = TRUE,  # will save a file named inputs_ls_initial_conditions.RData
+    .dest_dir = 'data' # in specified destination directory 
     )
 
 
@@ -60,7 +71,7 @@ list_initial_conditions = f_initialConditions_run(
 
 # FINALLY, RUN SIMULATION
 # runtime: also pretty quick ~20 sec 
-f_sim_run(n_sim = n_simulations, .dest_dir = 'chikX/res')
+f_sim_run(n_sim = n_simulations, .dest_dir = 'res/individual_simulations')
 
 
 # unidentified error 
