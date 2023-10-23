@@ -1,0 +1,17 @@
+{
+    "sortOrder": [
+        {
+            "columnIndex": 4,
+            "ascending": true
+        },
+        {
+            "columnIndex": 2,
+            "ascending": true
+        },
+        {
+            "columnIndex": 3,
+            "ascending": false
+        }
+    ],
+    "path": "~/Work Docs/Oxford_BDI_2023/CHIK-X/lassaVac/chikX"
+}
