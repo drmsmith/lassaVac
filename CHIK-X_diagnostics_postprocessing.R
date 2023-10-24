@@ -18,6 +18,8 @@ df_all_sims = map(all_files, function(dirname){
 }) %>% bind_rows
 
 
+# write.csv(df_all_sims, file = 'res/sim_res_100.csv', row.names=F)
+
 #### FOR THESE NOT SO GRACEFUL PLOTS 
 # SUBSET THE FIRST 20 SIMULATIONS IN THE FIRST 
 # LOOP ABOVE i.e. all_files[1:20]
