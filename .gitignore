@@ -1,7 +1,9 @@
-# ignore preprocessing for now
+# some processing files either too large or irrelevant
 preprocessing/data/2015_UNadj_worlpop_data/*
 preprocessing/PAHO_curve_fitting/curves_man_adj
+preprocessing/mobility_and_p_spillover/2015_*
 
+# some dirs and files to ignore for now 
 figs
 .Rproj.user
 handover_and_TODO.pptx
