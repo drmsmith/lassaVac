@@ -6,4 +6,5 @@ preprocessing/mobility_and_p_spillover/2015_*
 # some dirs and files to ignore for now 
 figs
 .Rproj.user
+.lintr
 handover_and_TODO.pptx
