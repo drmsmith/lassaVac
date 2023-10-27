@@ -1,3 +1,4 @@
+library('conflicted')
 library('tidyverse')
 library('cowplot')
 
@@ -26,13 +27,13 @@ df_all_sims = map(all_files, function(dirname){
 # (otherwise, plots are illegible)
 
 # TIME 
-ggplot(df_all_sims, aes(time_years, cases_sim)) + 
+ggplot(df_all_sims, aes(time_years, daily_infections_sim)) + 
     geom_point(aes(color=timing), size=1, alpha=0.2) +  # size=timing
     facet_wrap(~simulation, scales = 'free_y', nrow = 4) + 
     theme_bw()
 
 # COUNTRY
-ggplot(df_all_sims, aes(time_years, cases_sim)) + 
+ggplot(df_all_sims, aes(time_years, daily_infections_sim)) + 
     geom_point(aes(color=code), size=1, alpha=0.2) +  # size=timing
     facet_wrap(~simulation, scales = 'free_y', nrow = 4) + 
     theme_bw()
@@ -52,10 +53,13 @@ ls_all_sim_res = map(all_files, function(dirname){
 },.progress=T) 
 
 
+
+
 # save plots for every sim ~countries 
 # here, every panel has a unique y-axis
 # remove 'free_y' below to undo this 
-map(ls_all_sim_res, function(.x) {
+dir.create('figs/diagnostic_plots', recursive = T)
+walk(ls_all_sim_res, function(.x) {
     
     df_timing = .x[,c('timing', 'country')] %>% unique 
     df_timing$timing = df_timing$timing/365.25
@@ -78,29 +82,21 @@ map(ls_all_sim_res, function(.x) {
 
 
 ###################################
-# save giff with all simulations # 
-##################################
+# SAVE GIFF WITH ALL SIMULATIONS # 
+###################################
 # be careful because this easily uses  6-7 GB of RAM 
 # on my machine, not sure why.... 
 # run gc() to free up memory 
 
-library('magick')
 
 imgs <- list.files('figs/diagnostic_plots', full.names = TRUE, pattern='.png') %>%
     str_sort(numeric = TRUE)
-img_list <- lapply(imgs, image_read)
 
-## join the images together
-img_joined <- image_join(img_list)
-
-## animate at 1 frame per second
-img_animated <- image_animate(img_joined, fps = 1)
-
-## view animated image
-img_animated
-
-## save to disk
-image_write(image = img_animated, path = 'figs/all_outbreaks.gif')
+gif_maker(
+    vec_img_paths = imgs,  # vector of full paths to desired images in correct order
+    file_name = 'res_diagnostics', # how to name the gif
+    dest_dir = figs,     # directory to save gif in 
+    .fps=2) 
 
 # free up RAM 
 gc()

@@ -2,6 +2,13 @@
 ### MODEL INITIAL CONDITIONS ###
 ################################
 
+library('conflicted')
+library('tidyverse')
+conflicts_prefer(
+    dplyr::filter(),
+    dplyr::select(),
+    .quiet = T
+)
 
 if (!interactive()) { # not run when file is sourced to avoid duplication
     set.seed(18102023)
@@ -67,7 +74,7 @@ f_initialConditions = function(m_spread){
                 dplyr::select(code, country, total_pop_size),
             by = "code"
         ) %>%
-        filter( !is.na(timing) & amplitude > 0 ) %>%
+        dplyr::filter( !is.na(timing) & amplitude > 0 ) %>%
         mutate(
             timing = as.numeric(timing),
             amplitude = as.numeric(amplitude)
