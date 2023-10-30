@@ -2,6 +2,7 @@
 preprocessing/data/2015_UNadj_worlpop_data/*
 preprocessing/PAHO_curve_fitting/curves_man_adj
 preprocessing/mobility_and_p_spillover/2015_*
+preprocessing/mobility_and_p_spillover/eda.R
 
 # some dirs and files to ignore for now 
 figs
