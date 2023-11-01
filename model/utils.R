@@ -1,4 +1,4 @@
-library('magick')
+library('magick', quietly = T)
 
 # hyperbolic funciton for outbreak shape 
 # sinh curve used to simulate outbreak 
@@ -33,6 +33,7 @@ gif_maker = function(
     ## save to disk
     img_path = paste0(dest_dir, '/', file_name, '.gif')
     image_write(image = img_animated, path = img_path)
+    gc()
     return(img_animated)
 }
 

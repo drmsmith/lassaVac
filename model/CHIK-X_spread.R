@@ -1,5 +1,10 @@
+library('conflicted')
 library('tidyverse')
 library('geosphere')
+conflicts_prefer(
+    dplyr::filter(),
+    .quiet = T
+)
 
 if (!interactive()) { # not run when file is sourced to avoid duplication
     set.seed(18102023)
@@ -10,9 +15,9 @@ if (!interactive()) { # not run when file is sourced to avoid duplication
 
 
 
-#####################
-### GRAVITY MODEL ###
-#####################
+#######################
+### 'GRAVITY' MODEL ###
+#######################
 
 
 ### Function for gravity model (daily probability of spread over assumed duration of spread)

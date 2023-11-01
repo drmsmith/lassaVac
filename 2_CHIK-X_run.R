@@ -65,13 +65,13 @@ list_initial_conditions = f_initialConditions_run(
 
 
 # ALTERNATIVELY, LOAD PRE-RUN SPREAD AND INITIAL CONDITIONS
-# list_gravity_spread     = get(load('chikX/data/inputs_ls_spread.RData'))
-# list_initial_conditions = get(load('chikX/data/inputs_ls_initial_conditions.RData'))
+# list_gravity_spread     = get(load('data/inputs_ls_spread.RData'))
+# list_initial_conditions = get(load('data/inputs_ls_initial_conditions.RData'))
 
 
 # FINALLY, RUN SIMULATION
 # runtime: also pretty quick ~20 sec
-dir.create('./res/individual_simulations', recursive = T)
+if (!dir.exists('./res/individual_simulations')) {dir.create('./res/individual_simulations', recursive = T)}
 f_sim_run(n_sim = n_simulations, .dest_dir = 'res/individual_simulations')
 
 

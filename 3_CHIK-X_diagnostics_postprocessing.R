@@ -58,17 +58,17 @@ ls_all_sim_res = map(all_files, function(dirname){
 # save plots for every sim ~countries 
 # here, every panel has a unique y-axis
 # remove 'free_y' below to undo this 
-dir.create('figs/diagnostic_plots', recursive = T)
+if (! dir.exists('figs/diagnostic_plots')) {dir.create('figs/diagnostic_plots', recursive = T)}
 walk(ls_all_sim_res, function(.x) {
     
-    df_timing = .x[,c('timing', 'country')] %>% unique 
+    df_timing = .x[,c('timing', 'country')] %>% unique %>% arrange(timing)
     df_timing$timing = df_timing$timing/365.25
     n_sim = .x[1,'simulation']
     
     ggp = ggplot(.x, aes(time_years, daily_infections_sim)) + 
         geom_point(aes(color=country), size=1, alpha=0.2) + 
         geom_vline(data=df_timing, aes(xintercept = timing, color=country), linetype='dashed') + 
-        facet_wrap(~country, scales = 'free_y', nrow = 4) + 
+        facet_wrap(~factor(country, levels=df_timing$country), scales = 'free_y', nrow = 4) + 
         guides(color=guide_legend(override.aes = list(linetype = 0))) + 
         labs(x='Time (years)', y='Simulated Daily Infections', 
              title=paste('Simulation', n_sim, sep=' ')) +
@@ -94,8 +94,8 @@ imgs <- list.files('figs/diagnostic_plots', full.names = TRUE, pattern='.png') %
 
 gif_maker(
     vec_img_paths = imgs,  # vector of full paths to desired images in correct order
-    file_name = 'res_diagnostics', # how to name the gif
-    dest_dir = figs,     # directory to save gif in 
+    file_name = 'diagnostic_plots_gif', # how to name the gif
+    dest_dir = 'figs',     # directory to save gif in 
     .fps=2) 
 
 # free up RAM 
