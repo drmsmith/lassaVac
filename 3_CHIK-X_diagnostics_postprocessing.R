@@ -88,6 +88,7 @@ walk(ls_all_sim_res, function(.x) {
 # on my machine, not sure why.... 
 # run gc() to free up memory 
 
+source('model/utils.R')
 
 imgs <- list.files('figs/diagnostic_plots', full.names = TRUE, pattern='.png') %>%
     str_sort(numeric = TRUE)
@@ -96,7 +97,7 @@ gif_maker(
     vec_img_paths = imgs,  # vector of full paths to desired images in correct order
     file_name = 'diagnostic_plots_gif', # how to name the gif
     dest_dir = 'figs',     # directory to save gif in 
-    .fps=2) 
+    .fps=0.5) 
 
 # free up RAM 
 gc()
