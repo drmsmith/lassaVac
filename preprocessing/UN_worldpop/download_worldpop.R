@@ -16,32 +16,8 @@ conflicts_prefer(
 # select countries whose population to extract #
 ################################################
 
-# burden estimate data from Salje et al. 
-df_burden_estimates <- read.csv("preprocessing/data/df_countries_burden_estimates_cepi.csv")
-
-# keep only countries where transmission is estimated to occur
-df_burden_est_sub <- df_burden_estimates %>%
-    filter(classification != "NoTransmission") %>%
-    dplyr::select(
-        country, who_region, classification, infections_mean,
-        infections_min, infections_max
-    )
-
-# United_States_of_America name isn't mapped onto USA by countrycode()
-df_burden_est_sub$country <- ifelse(df_burden_est_sub$country == "United_States_of_America",
-    "USA", df_burden_est_sub$country
-)
-
-# map country names onto country codes for query
-ccodes <- countrycode(df_burden_est_sub$country,
-    origin = "country.name", destination = "iso3c"
-) %>%
-    data.frame(country = df_burden_est_sub$country, code = .)
-
-# adding country code to burden estimate data frame
-df_burden_est_sub <- left_join(ccodes, df_burden_est_sub, by = "country")
-
-
+# countries 
+suit_country_codes <- unique(suit_per_country$country_code)
 
 #################################################################
 # download worldpop UN-adjusted data from 2016 (1km aggregated) #
@@ -49,19 +25,38 @@ df_burden_est_sub <- left_join(ccodes, df_burden_est_sub, by = "country")
 
 # load downld_worldpop_UNadj1km()
 source("preprocessing/UN_worldpop/utils.R")
-dir.create("preprocessing/data/2015_UNadj_worlpop_data")
+dest_dir = 'data/2020_UNadj_worlpop_data'
+# unlink(dest_dir, recursive = T) # deletes folder and contents 
+if (!dir.exists(dest_dir)) dir.create(dest_dir)
+
+
+# parameters 
+v_country_codes = suit_country_codes # vector of strings
+s_year = '2020' # string
+
 
 # will return 1 for successful download and
 # iso3c country code for failed downloads
-downlds <- map(df_burden_est_sub$code,
-    function(.x) {
-        downld_worldpop_UNadj1km(
-            country = .x, year = "2015",
-            local_filepath = "preprocessing/data/2015_UNadj_worlpop_data"
+downlds <- map(v_country_codes,
+    function(.code) {
+        d_status = downld_worldpop_UNadj1km(
+            country = .code, year = s_year,
+            local_filepath = dest_dir
         )
+        if (is.null(d_status)) d_status = .code
+        return(d_status)
     },
     .progress = T
 ) %>% unlist()
+
+
+downlds[downlds!='1'] %>%
+    countrycode(origin = 'iso3c', destination = 'country.name') %>% 
+    cat(sep=', ')
+# ATF, GGY, CXR, JEY, PCN, SGS
+# French Southern Territories, Guernsey, 
+# Christmas Island, Jersey, Pitcairn Islands, 
+# South Georgia & South Sandwich Islands
 
 # check for failed downloads 
 failed_downloads = downlds[downlds!=1]

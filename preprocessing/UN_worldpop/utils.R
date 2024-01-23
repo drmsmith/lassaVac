@@ -1,4 +1,4 @@
-downld_worldpop_UNadj1km <- function(country = 'BGR', year = '2015',
+unsafe_downld_worldpop_UNadj1km <- function(country = 'BGR', year = '2015',
                                      local_filepath = 'preprocessing/data/2015_UNadj_worlpop_data'){
 
     # create file path for local file 
@@ -39,3 +39,6 @@ downld_worldpop_UNadj1km <- function(country = 'BGR', year = '2015',
     }
     
 }
+
+# wrap around possibly for graceful failure 
+downld_worldpop_UNadj1km <- purrr::possibly(unsafe_downld_worldpop_UNadj1km)
