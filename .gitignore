@@ -10,3 +10,10 @@ figs
 .lintr
 handover_and_TODO.pptx
 methods
+
+# data files too large to include
+data/gadm
+data/gadm_merged_shp
+data/2020_UNadj_worldpop_data
+preprocessing/misc.R
+preprocessing/suitability/misc.R
