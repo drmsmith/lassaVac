@@ -8,8 +8,8 @@ conflicts_prefer(
 )
 
 
-# read in Salje et al. burden estimates with pop size
-df_burden_with_pop_size = read.csv(file = 'preprocessing/data/df_burden_with_pop_size_2015.csv')
+# read in suitability with pop size and regions
+df_burden_with_pop_size = read.csv(file = 'data/df_suit_means_pop_weighted_pop_size.csv')
 # read in raw mobility data 
 mobility = read.csv(
     file = 'preprocessing/data/KCMD_EUI_GMP_Estimated_trips.csv')
@@ -23,13 +23,13 @@ colnames(mobility) = c('reporting', 'secondary', 'year', 'value')
 
 (all_years = mobility$year %>% unique) # 2011 2012 2013 2014 2015 2016
 all_codes = mobility[,1:2] %>% unlist %>% unique %>% sort
-# 278 unique codes in reporting and seconrary in every year 
+# 279 unique codes in reporting and seconrary in every year 
 # i.e. all 0s also present
 
 # codes to be removed based on burden estimates
-ccodes_burden = df_burden_with_pop_size$code %>% unique
-codes_rm = all_codes[!(all_codes %in% ccodes_burden)] 
-
+ccodes_burden = df_burden_with_pop_size$country_code %>% unique # 220
+codes_rm = all_codes[!(all_codes %in% ccodes_burden)]  # removing 91 codes 
+n_codes_remaining = length(all_codes) - length(codes_rm) # 188 for sanity checking
 
 if (!interactive()) { # not run when file is sourced 
     # mobility data not available for 
@@ -65,10 +65,10 @@ rownames(mat_mobility) = mat_mobility[,1]
 
 # only 1 NA per row which is for mapping onto self i.e. internal travel 
 apply(mat_mobility, 1, function(.x) sum(is.na(.x[2:length(.x)]))) %>% 
-    unname %>% sum == 108
+    unname %>% sum == n_codes_remaining
 # diagonal is all NAs 
 mat_mobility[,2:NCOL(mat_mobility)] %>% as.matrix %>% 
-    diag %>% is.na %>% sum == 108
+    diag %>% is.na %>% sum == n_codes_remaining
 
 
 # check that rownames and colnames match 
