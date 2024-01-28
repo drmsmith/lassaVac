@@ -112,7 +112,8 @@ if (!interactive()) { # not run when file is sourced
 # SAVE ALL DATA #
 #################
 
-dir.create('preprocessing/data/PAHO_case_data_2014-2017')
+res_dir = 'preprocessing/data/PAHO_case_data_2014-2017'
+if (!dir.exists(res_dir)) { dir.create(res_dir) }
 
 write.csv(df_paho_long, file = "preprocessing/data/PAHO_case_data_2014-2017/df_PAHO_long_full.csv", row.names = F)
 write.csv(df_paho_sub, file = "preprocessing/data/PAHO_case_data_2014-2017/df_PAHO_long_subset.csv", row.names = F)
