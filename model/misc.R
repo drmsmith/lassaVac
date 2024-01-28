@@ -4,6 +4,42 @@ conflicted::conflicts_prefer(
     .quiet = T
 )
 
+
+###############
+# WHO REGIONS #
+###############
+
+who_regions = read.csv('preprocessing/data/who-regions.csv')
+
+dim(who_regions)
+
+who_codes_6 = read.table('clipboard', header=F, sep='\t')
+colnames(who_codes_6) = c('region_code', 'region_name')
+
+who_reg_name_code = map(
+    unique(who_regions$WHO.region), function(.reg_name) {
+        reg_code = who_codes_6$region_code[str_detect(who_codes_6$region_name, .reg_name)]
+        reg_code = ifelse(length(reg_code)==0, NA, reg_code)
+        out = data.frame(
+            region_name = .reg_name,
+            region_code = reg_code
+        )
+        return(out)
+    }) %>% bind_rows
+
+
+colnames(who_regions) = c('country_name', 'country_code', 'year', 'region_name')
+who_regions <- select(who_regions, country_name, country_code, region_name)
+
+df_countries_who_regions_codes <- right_join(who_regions, who_reg_name_code, by='region_name')
+
+# write.csv(df_countries_who_regions_codes, 'methods/df_countries_who_regions_codes.csv', row.names=F)
+
+
+
+
+
+
 sim_res = get(load('res/individual_simulations/list_diseaseX_i_simulation_2.RData'))
 df_res = sim_res[[1]]$sim_res
 plot(df_res$time_years, df_res$daily_infections_sim)
