@@ -1,330 +1,225 @@
-library('conflicted')
 library('tidyverse')
-library('MESS')
 conflicts_prefer(
     dplyr::filter(),
-    dplyr::lag(),
     .quiet = T
 )
 
-###############
-## SIM FUNC ##
-##############
-
-# utility funcs 
 source('model/utils.R')
 
-# curve_shape_params = read.csv("data/shape_params_PAHO_cases_adj.csv")
-# curve_shape_params$peak_time_abs = sample_params$peak_time - sample_params$t_min
-# write.csv(curve_shape_params, file='chikX/data/shape_params_PAHO_cases_adj.csv', row.names=F)
+
+# define simulation parameters
+set.seed(31124)
+# unlink(res_dir)
+res_dir = './res/importation_model_par'     # save results in this dir 
+n_simulations = 100                      # number of simulations
+duration_spread <- 365*2                # simulation time span
+infectiousness_duration <- 7    # infected individual can infect days
+
+# these factors transform 
+# pop-weighted suitability
+# f * suit ^ k 
+fact_f = 0.1
+fact_k = 4.5
+
+# initialise results dir 
+if (!dir.exists(res_dir)) {dir.create(res_dir, recursive = T)}
 
 
-# sample curve parameters from PAHO hyperbolic function fits 
-# simulate an outbreak with a given amplitude 
-# adjust for any delay in the outbreak start time 
-# and filter out start using .threshold to reflect 
-# start time + lag until detection 
-    # .threshold = # currently defined as 1% of the peak size
-    # this also avoids long left-tails, 
-    # leading to more reasonable outbreak durations 
-###### VERSION WHICH USES A THRESHOLD OF INFECTIONS TO AVOID LONG LEFT TAILS 
-# sample_curve <- function(.curve_shape_params = curve_shape_params,
-#                          .amplitude = amplitude,
-#                          .outbreak_timing = outbreak_timing
-#                          # .threshold = threshold
-# ) {
-#     sample_params <- sample_n(.curve_shape_params, 1)
-#     # peak_time = sample_params$peak_time_abs #+ t_lag -- now using middle of 5 years
-#     new_s_l <- rnorm(n = 1, mean = sample_params$s_l, sd = sample_params$s_l_SE * 0.25)
-#     new_s_r <- rnorm(n = 1, mean = sample_params$s_r, sd = sample_params$s_r_SE * 0.25)
-#     # negative params not accepted
-#     new_s_l <- ifelse(new_s_l < 0, abs(new_s_l) - sample_params$s_l, new_s_l)
-#     new_s_r <- ifelse(new_s_r < 0, abs(new_s_r) - sample_params$s_r, new_s_r)
-#     # <1 not accepted
-#     # new_s_l = ifelse(new_s_l < 1, 1, new_s_l)
-#     # new_s_r = ifelse(new_s_r < 1, 1, new_s_r)
-#     # first simulate over about 5 years
-#     sim_length <- 5 * 365
-#     time_d <- seq(from = 0, to = 5, length.out = 5 * 365)
-#     outbreak_res <- shin_curve(
-#         xs = time_d, amplitude = .amplitude,
-#         h_transl = 2.5, # peak_time,
-#         s_l = new_s_l, s_r = new_s_r
-#     )
-#     # remove daily infections < 1
-#     # round down to get integer infections
-#     outbreak_res <- ifelse(outbreak_res < 1, 0, outbreak_res) %>% floor()
-#     # keep only positive values and their corresponding times
-#     inds <- which(outbreak_res > 0)
-#     # add an extra index if possible to reach 0 at the end
-#     if (max(inds) < length(inds)) {
-#         inds <- c(inds, (max(inds) + 1))
-#     }
-#     # subset positive daily infections
-#     outbreak_res <- outbreak_res[inds]
-#     # add 0s for days before outbreak start (hence -1)
-#     outbreak_res <- c(rep(0, times = .outbreak_timing - 1), outbreak_res)
-#     # account for the later start of the outbreak
-#     t_lag <- (.outbreak_timing / 365.25) # convert outbreak start into years
-#     # total outbreak duration
-#     dt <- (length(outbreak_res) / 365.25) + t_lag
+# suitability (instead of estd. infections)
+# suitability info for 220 countries
+df_burden <- read.csv("data/df_suit_means_pop_wght_pop_size_who_regions.csv")
 
-#     # adjust time to match the length of the outbreak
-#     time_d <- seq(from = 0, to = dt, length.out = length(outbreak_res))
-#     peak_ampltd <- max(outbreak_res)
-#     peak_time <- time_d[which(outbreak_res == peak_ampltd)[1]]
+# mobility data (daily trips between src and dest)
+# mobility info for 188 countries
+mat_mob_daily_trips <- read.csv("data/df_mat_mob_n_daily_trips.csv")
+all_codes <- colnames(mat_mob_daily_trips)
+rownames(mat_mob_daily_trips) <- all_codes
 
-#     # filter for cases less than starting threshold
-#     # .threshold = quantile(outbreak_res, 0.4)
-#     .threshold <- 0.01 * peak_ampltd
-#     df_outbreak_res <- data.frame(
-#         time_years = time_d,
-#         daily_infections_sim = outbreak_res
-#     ) %>%
-#         filter(!(
-#             (daily_infections_sim < .threshold) &
-#                 (time_years <= peak_time)
-#         ))
-    
-#     df_outbreak_res$time_years = seq(from=t_lag, to=t_lag+max(time_d), length.out=nrow(df_outbreak_res))
-
-#     # this df is useful for diagnostics
-#     simulation_info <- data.frame(
-#         amplitude = .amplitude,
-#         h_transl = peak_time,
-#         s_l = new_s_l,
-#         s_r = new_s_r,
-#         dt = dt
-#     )
-#     # large list of different components returned
-#     return(list(
-#         outbreak_res = df_outbreak_res$daily_infections_sim, # sim res
-#         time_d = df_outbreak_res$time_years, # time_years
-#         simulation_info = simulation_info, # diagnostics
-#         sample_params = sample_params
-#     )) # diagnostics
-# }
+# ensure mobility data and suitability data are matched 
+# since there are fewer countries on the mobility data set 
+# 220 vs 188 (suit vs mobility)
+# final number is 184 for some reason
+df_burden <- filter(df_burden, country_code %in% all_codes) %>% drop_na()
 
 
+#########################
+# transform suitability #
+#########################
+df_burden$mean_pop_wght_transfrm = fact_f * df_burden$mean_pop_weighted ^ fact_k
 
-###### VERSION WHICH USES SCALING
-sample_curve <- function(.curve_shape_params = curve_shape_params,
-                         .amplitude = amplitude,
-                         .outbreak_timing = outbreak_timing
-                         # .threshold = threshold
-) {
-    sample_params <- sample_n(.curve_shape_params, 1)
-    # peak_time = sample_params$peak_time_abs #+ t_lag -- now using middle of 5 years
-    new_s_l <- rnorm(n = 1, mean = sample_params$s_l, sd = sample_params$s_l_SE * 0.25)
-    new_s_r <- rnorm(n = 1, mean = sample_params$s_r, sd = sample_params$s_r_SE * 0.25)
-    # negative params not accepted
-    new_s_l <- ifelse(new_s_l < 0, abs(new_s_l) - sample_params$s_l, new_s_l)
-    new_s_r <- ifelse(new_s_r < 0, abs(new_s_r) - sample_params$s_r, new_s_r)
-    # <1 not accepted
-    # new_s_l = ifelse(new_s_l < 1, 1, new_s_l)
-    # new_s_r = ifelse(new_s_r < 1, 1, new_s_r)
-    # first simulate over about 5 years
-    sim_length <- 5 * 365
-    time_d <- seq(from = 0, to = 5, length.out = 5 * 365)
-    outbreak_res <- shin_curve(
-        xs = time_d, amplitude = .amplitude,
-        h_transl = 2.5, # peak_time,
-        s_l = new_s_l, s_r = new_s_r
-    )
-    # get first peak size 
-    peak_ampltd <- floor(max(outbreak_res))
-    # create a data frame which will be tidied up to get curve 
-    df_sim_res <- data.frame(
-        # time_years = time_d,     # remove vals < 1 and round down to get integer infections
-        daily_infections_sim = ifelse(outbreak_res < 1, 0, outbreak_res) %>% floor(),
-        derived = c(0, diff(outbreak_res))
-    ) %>% filter(daily_infections_sim > 0) # remove daily infections < 1
-    # threshold is 1% of absolute value of the derivative 
-    # (i.e. dropping all values where there is almost no change in the daily infection values )
-    fltrd <- filter(df_sim_res, (abs(derived) > max(derived) * 0.01))
-
-    # between the first and the last value pick the larger 
-    scaling_f <- max(fltrd[c(1, nrow(fltrd)), "daily_infections_sim"])
-    # subtract scaling_f and rescale by the original amplitude 
-    fltrd$daily_inf_adj <- peak_ampltd * ((fltrd$daily_infections_sim - scaling_f) / (peak_ampltd - scaling_f))
-    fltrd$daily_inf_adj <- ifelse(fltrd$daily_inf_adj >= 0, fltrd$daily_inf_adj, 0) %>% floor()
-    # keep non-negative values 
-    fltrd <- filter(fltrd, daily_inf_adj > 0)
-    
-    # account for the later start of the outbreak
-    t_lag <- (.outbreak_timing / 365.25) # convert outbreak start into years
-    # total outbreak duration
-    dt <- (nrow(fltrd) / 365.25) + t_lag
-
-    # adjust time to match the length of the outbreak
-    sim_res <- c(rep(0, times = .outbreak_timing), fltrd$daily_inf_adj)
-    time_d <- seq(from = 0, to = dt, length.out = length(sim_res))
-    peak_time <- time_d[which(fltrd$daily_inf_adj == peak_ampltd)[1]]
+# paho case data
+df_paho_daily_cases <- read.csv("data/df_paho_daily_cases.csv")
+df_paho_outbreak_sizes <- read.csv("data/df_paho_outbreak_sizes.csv")
+paho_codes <- df_paho_outbreak_sizes$code
 
 
-    # this df is useful for diagnostics
-    simulation_info <- data.frame(
-        amplitude = .amplitude,
-        h_transl = peak_time,
-        s_l = new_s_l,
-        s_r = new_s_r,
-        dt = dt
-    )
-    # large list of different components returned
-    return(list(
-        outbreak_res = sim_res, # sim res
-        time_d = time_d, # time_years
-        simulation_info = simulation_info, # diagnostics
-        sample_params = sample_params
-    )) # diagnostics
+#########################
+#### PARALLELISATION ####
+#########################
+
+library('doParallel')
+library('foreach')
+library('progress')
+
+f <- function(iterator){
+  pb <- txtProgressBar(min = 1, max = iterator - 1, style = 3)
+  count <- 0
+  function(...) {
+    count <<- count + length(list(...)) - 1
+    setTxtProgressBar(pb, count)
+    flush.console()
+    list(...) # this can feed into .combine option of foreach
+  }
 }
 
 
+totalCores = detectCores()
+# cl <- makeCluster(totalCores[1]-1, type='SOCK')
+cl <- parallel::makeCluster(4, type='PSOCK')
+registerDoParallel(cl)
+clusterEvalQ(cl,  library('tidyverse'))
+clusterEvalQ(cl,  source('model/utils.R'))
+# clusterEvalQ(cl, set.seed(31124))
 
 
 
 
+###############################
+# start simulation, init cond #
+###############################
 
-# one run of the simulation
-# takes in vec_regions to loop over
-# their associated data frame of initial conditions
-# and simulation number
-f_sim <- function(vec_catchments_i = vec_catchments_i,
-                  df_initialConditions_i = df_initialConditions_i,
-                  .simulation_i = simulation_i) {
-    # loop over all countries to which CHIK-X spread in a given simulation_i
-    # for catchment_j in initialConditions_i, begin simulation
-    # for(catchment_j in vec_catchments_i){
-    list_diseaseX_i <- map(vec_catchments_i, function(catchment_j) {
-        if (!is.null(catchment_j)) {
-            # extract population size etc of catchment_j
-            df_initialConditions_j <- dplyr::filter(df_initialConditions_i, code == catchment_j)
-            popSize <- df_initialConditions_j$total_pop_size
-            outbreak_timing <- df_initialConditions_j$timing
-            code <- df_initialConditions_j$code
-            country <- df_initialConditions_j$country
-            amplitude <- df_initialConditions_j$amplitude
 
-            # run sample curve params and get simulation output
-            outbreak_sim <- sample_curve(
-                .curve_shape_params = curve_shape_params,
-                .amplitude = amplitude,
-                .outbreak_timing = outbreak_timing
-            )
-            # get result vector and time vectors out 
-            outbreak_res <- outbreak_sim$outbreak_res
-            time_d <- outbreak_sim$time_d
+start.time.total <- Sys.time()
 
-            # cumulative incidence - numeric integral 
-            # very similar to sum over all res 
-            cum_U <- MESS::auc(seq_along(outbreak_res), outbreak_res,
-                type = "spline", subdivisions = 1e6
-            )
+# for (sim_i in 1:n_simulations) {
+foreach(sim_i = icount(n_simulations), .combine = f(n_simulations)) %dopar% {
+    cat(paste0("Simulation ", sim_i, "\n", collapse = ""))
+    start.time <- Sys.time()
 
-            # create output df 
-            df_diseaseX_k <- data.frame(
-                time_years = time_d,
-                daily_infections_sim = outbreak_res
-            ) %>% mutate(
-                country = country,
-                code = code,
-                timing = outbreak_timing,
-                simulation = .simulation_i,
-                IncCumul_U_final = cum_U
-            )
-            # comment out below to return only sim_res aka df_disease_k
-            # supplementary table with params for debugging
-            sim_params_info <- list(
-                simulation_info = cbind(
-                    data.frame(
-                        country = country,
-                        code = code,
-                        timing = outbreak_timing,
-                        simulation = .simulation_i,
-                        IncCumul_U_final = cum_U
-                    ),
-                    outbreak_sim$simulation_info
-                ),
-                sampled_params = outbreak_sim$sample_params # from PAHO data
-            )
 
-            list_diseaseX_i_out <- list(
-                sim_res = df_diseaseX_k,
-                sim_params_info = sim_params_info
-            )
+    # matrix of spread across catchments
+    # (to be updated in loop with spread model)
+    m_spread <- matrix(0, nrow = nrow(df_burden), ncol = duration_spread)
+    colnames(m_spread) <- 1:duration_spread
+    rownames(m_spread) <- df_burden$country_code
+
+    # starting catchment
+    # identify first catchment, add to vector of infected catchments, update spread matrix
+    catchment0 <- sample(df_burden$country_code, size = 1, prob = df_burden$p_spillover)
+    catchment0_pop_size <- df_burden$pop_size[df_burden$country_code == catchment0]
+
+    # initialise vec_catchments_infected
+    vec_catchments_infected <- catchment0
+    # fill rest of row with 1 (assumption is that catchments do not return to susceptible)
+    m_spread[catchment0, ] <- 1
+
+    # subset relevant data
+    df_catchment0 <- df_burden[
+        df_burden$country_code == catchment0,
+        c("country_name", "country_code", "region_name", "region_code", "pop_size")
+    ]
+
+
+    # generate outbreak data
+    outbreak_0 <- generate_outbreak(
+        sim_day = 0,
+        df_country_data = df_catchment0,
+        fix_pop_affected = NULL,
+        infectiousness_duration = infectiousness_duration,
+        sim_i = sim_i
+    )
+
+    # list$'country code' = ls_outbreak_info
+    ls_outbreaks <- setNames(list(outbreak_0), catchment0)
+
+
+    # go through outbreak and update matrices day-by-day
+    for (day_i in 1:duration_spread) {
+        # cat(paste0("Day ", day_i, "\n", collapse = ""))
+        # for each catchment currently infected
+        for (catchment_infect_j in vec_catchments_infected) {
+            outbrk <- ls_outbreaks[[catchment_infect_j]] # get outbreak data and info
+
+            # n_infectious people on day_i from source country
+            n_infectious <- outbrk$v_daily_new_infections[day_i - outbrk$df_res_summary$timing]
+            # population size, source country
+            pop_size <- outbrk$df_res_summary$pop_size
+            # proportion of infectious population
+            prop_infectious <- n_infectious / pop_size
+            # all catchments not currently infected
+            uninfected_ccodes <- df_burden$country_code[!df_burden$country_code %in% vec_catchments_infected]
+            # filter out ccodes with no travel between countries to save comp time
+            no_travel <- all_codes[mat_mob_daily_trips[catchment_infect_j, ] == 0]
+            # leave countries not yet infected but where there is travel between source and dest
+            uninfected_travel_ccodes <- uninfected_ccodes[!uninfected_ccodes %in% no_travel]
+
+            # evaluate probability of spread and outbreak to all catchments not currently infected
+            for (catchment_suscept_k in uninfected_travel_ccodes) {
+                # p infectious moving a -> b
+                n_travellers <- mat_mob_daily_trips[catchment_infect_j, catchment_suscept_k]
+                n_infectious_travellers <- n_travellers * prop_infectious
+                prop_infectious_traveller <- n_infectious_travellers / n_travellers
+
+                ##### CALCULATE P INFECTIOUS PERSON TRAVELLING #####
+                ####################################################
+                # probability of an infected person travelling
+                travel_infect_i_j <- rbinom(1, 1, prop_infectious_traveller)
+
+                # probability of outbreak starting = suitability
+                ####################################################### CHANGE BACK TO POP WEIGHTED
+                p_outbreak <- df_burden$mean_pop_wght_transfrm[df_burden$country_code == catchment_suscept_k]
+                outbreak_i_j <- rbinom(1, 1, p_outbreak)
+
+
+                # if infected travels AND starts outbreak
+                # update infected catchments and corresponding m_spread matrix
+                if ((travel_infect_i_j == 1) & (outbreak_i_j == 1)) {
+                    # add to infected countries
+                    vec_catchments_infected <- append(
+                        vec_catchments_infected,
+                        catchment_suscept_k
+                    )
+                    # indicate start date
+                    m_spread[catchment_suscept_k, day_i:ncol(m_spread)] <- 1
+
+                    # subset relevant data
+                    df_suscept_country <- df_burden[
+                        df_burden$country_code == catchment_suscept_k,
+                        c("country_name", "country_code", "region_name", "region_code", "pop_size")
+                    ]
+
+                    # generate outbreak data
+                    new_outbreak <- generate_outbreak(
+                        sim_day = day_i, df_country_data = df_suscept_country,
+                        fix_pop_affected = NULL, infectiousness_duration = infectiousness_duration,
+                        sim_i = sim_i
+                    )
+                    # append as 'country code' = ls_outbreak_info
+                    ls_outbreaks <- append(
+                        ls_outbreaks, setNames(list(new_outbreak), catchment_suscept_k)
+                    )
+                }
+            }
         }
-    })
-    return(list_diseaseX_i)
-}
-
-
-
-# quick check if function runs as desired 
-if (!interactive()) { # not run when file is sourced 
-    f_sim(df_initialConditions_i = list_initial_conditions[[10]], 
-          vec_catchments_i = levels(factor(list_initial_conditions[[10]]$code)),
-          .simulation_i = 10) %>% bind_rows %>%
-        ggplot(aes(time_years, daily_infections_sim)) + 
-        geom_point(aes(color=country)) + 
-        facet_wrap(~country) + 
-        guides(color='none') + theme_light()
-        
-}
-
-
-
-
-
-
-################
-### SIM LOOP ###
-################
-
-# run model for n_sim simulations and save 
-# each simulation in a separate .RData file 
-f_sim_run = function(n_sim=100, .dest_dir = NULL){
-    if (is.null(.dest_dir)==T || file.exists(.dest_dir)==F) {
-        stop(paste('invalid dest_dir:\n"', .dest_dir,'"', sep='')) 
-    } else {
-        ### For each set of initial conditions
-        # .packages = c('magrittr', 'tidyverse', 'deSolve')
-        # foreach(simulation_i = icount(n_simulations), .combine = f(n_simulations)) %dopar% {
-        # for(simulation_i in first_sim:n_simulations){
-        walk(1:n_sim, function(simulation_i){
-            
-            # select initialConditions for model run i
-            df_initialConditions_i = list_initial_conditions[[simulation_i]]
-            # init_conditaions.R returns NULL if no establishment 
-            if (!is.null(df_initialConditions_i)) { 
-                vec_catchments_i = levels(factor(df_initialConditions_i$code))
-                
-                # simulate outbreaks by sampling curves 
-                list_diseaseX_i = f_sim(
-                    vec_catchments_i = vec_catchments_i, 
-                    df_initialConditions_i = df_initialConditions_i, 
-                    .simulation_i = simulation_i)
-                
-                #### SAVE RES #### 
-                # cook up correct file name depending on input style  
-                fname = ifelse(
-                    endsWith(.dest_dir, '/'), 
-                    paste(.dest_dir, 
-                          'list_diseaseX_i_simulation_', simulation_i, 
-                          '.RData', sep=''),
-                    paste(.dest_dir, 
-                          '/list_diseaseX_i_simulation_', simulation_i, 
-                          '.RData', sep='')
-                )
-                save(list_diseaseX_i, file = fname)
-                } 
-        }, .progress=T)
-        cat(paste('Simulations saved in "', .dest_dir, '".\n',  sep=''))
     }
+
+
+
+    filename <- paste0(res_dir, "/simulation_", sim_i, ".RDS", collapse = "")
+    saveRDS(ls_outbreaks, file = filename)
+
+    end.time <- Sys.time()
+    time.taken <- round(end.time - start.time, 2)
+    print(time.taken)
 }
 
 
-# quick check if function runs as desired 
-if (!interactive()) { # not run when file is sourced 
-    f_sim_run(n_sim = 2,.dest_dir = 'chikX/res')
-    # ecdf() for cumulative distribution 
-}
+stopCluster(cl)
+
+cat(paste('Simulations saved in "', res_dir, '".\n', sep = ""))
+end.time.total <- Sys.time()
+time.taken <- round(end.time.total - start.time.total, 2)
+print(time.taken)
+
+
+# str(ls_outbreaks)
