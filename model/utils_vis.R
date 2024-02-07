@@ -19,9 +19,9 @@
 # c("white", "#ffa500", "#682860")
 # c("#547dbf", "#fbeaa5", "#db4437")
 
-############
+####################
 # BAR PLOT HELPERS #
-###########
+####################
 
 # create col scheme for every panel
 make_cepi_base_col_scheme <- function(.data, .base_cols, .region_code) {
@@ -41,7 +41,7 @@ gg_metrics_barplot <- function(
     .cols_for_scheme,
     .region_code,
     .metric,
-    .dest_dir = "figs/cepi_figs_ideas/barplots") { #
+    .dest_dir = "figs/barplots_by_region") { #
     # prepare colros and labels for plotting
     v_cols <- make_cepi_base_col_scheme(.data, .cols_for_scheme, .region_code)
     ymin_lab <- str_replace(.metric, "median", "q1")
@@ -89,7 +89,7 @@ gg_metrics_barplot <- function(
 gg_metrics_barplot_region <- function(
     .data,
     .metric,
-    .dest_dir = "figs/cepi_figs_ideas/by_region") { #
+    .dest_dir = "figs/barplot_by_region") { #
     # prepare colros and labels for plotting
     v_cols <- colorRampPalette(cepi_prim_cols)(6) %>%
         unlist() %>%
@@ -161,7 +161,7 @@ gg_metrics_map <- function(
     .wrld_joined_full,
     .region_code,
     .metric,
-    .dest_dir = "figs/cepi_figs_ideas") {
+    .dest_dir = "figs/maps_by_region") {
     if (.metric == "pop_size") {
         cepi_cols <- c("#ffe3b0", "#b0d8e2", "#0080A0")
         guide_lab <- "Population size\n(millions)"
@@ -225,7 +225,7 @@ gg_metrics_map <- function(
 gg_metrics_map_global <- function(
     .wrld_joined_full,
     .metric,
-    .dest_dir = "figs/cepi_figs_ideas/global_maps") {
+    .dest_dir = "figs/global_maps") {
     if (.metric == "pop_size") {
         cepi_cols <- c("#ffe3b0", "#b0d8e2", "#0080A0")
         guide_lab <- "Population size\n(millions)"
@@ -266,6 +266,67 @@ gg_metrics_map_global <- function(
         filename = dest_filename,
         width = 6466, height = 4161, units = "px",
         dpi = 500,
+        bg = "transparent"
+    )
+}
+
+
+
+make_cepi_base_col_scheme_col_out <- function(.base_cols, .out) {
+    colscheme <- colorRampPalette(.base_cols)(.out) %>%
+        unlist() %>%
+        unname()
+    return(colscheme)
+}
+
+
+
+
+
+
+#### single simulation map
+
+gg_map_outbreak_progress <- function(
+    .wrld_joined_full,
+    .metric,
+    .filter_codes,
+    .grob,
+    .start_day,
+    .dest_dir = "figs/outbreak_progression") {
+
+    cepi_cols <- c("#547dbf", "#fbeaa5", "#db4437")
+    guide_lab <- ifelse(
+            str_detect(.metric, "100k"),
+            "Infections\nper 100,000",
+            "Infections")
+
+    # get data set without current region
+    wrld_fltrd <- filter(.wrld_joined_full, !code %in% .filter_codes)
+
+    ggplot(data = .wrld_joined_full) +
+        geom_sf(aes(fill = .data[[.metric]]), color = "darkgrey", size = 0.1) +
+        geom_sf(
+            data = wrld_fltrd, fill = "gainsboro", color = NA # , alpha=0.95 # fill #D3D3D3, #E8E9EB, azure3
+        ) +
+        scale_fill_gradientn(
+            colors = cepi_cols,
+            na.value = "gray25", # "lightgray",
+            name = guide_lab
+        ) +
+        theme_light(base_size = 16) +
+        guides(color = "none") +
+        #     scale_color_manual(values = 'black') + #, na.value='white') +
+        coord_sf() + 
+        annotation_custom(.grob)
+
+    dest_filename <- paste0(
+        .dest_dir, "/", "outbreak_start_", .start_day, ".png",
+        collapse = ""
+    )
+    ggsave(
+        filename = dest_filename,
+        width = 6e3, height = 25e2, units = "px",
+        dpi = 400,
         bg = "transparent"
     )
 }

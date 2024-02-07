@@ -20,7 +20,7 @@ df_results_summary <- read.csv('res/import_model_sim_summary_x100.csv')
 df_full_summary <- read.csv('res/import_model_100_sim_full_summary.csv')
 
 # helper files
-df_burden = read.csv('data/df_suit_means_pop_wght_pop_size_who_regions.csv') 
+df_burden = read.csv('data/df_suit_means_pop_wght_pop_size_who_p_spillover.csv') 
 # df_iso_regions = read.csv('methods/misc/ISO-3166-Countries-with-Regional-Codes.csv')
 # df_who_regions = read.csv('methods/misc/df_countries_who_regions_codes.csv')
 
@@ -43,10 +43,10 @@ v_shape_files <- list.files("data/gadm", pattern = ".rds") %>%
 ## mobility
 mat_mob_daily_trips <- read.csv("data/df_mat_mob_n_daily_trips.csv")
 v_mobil_data <- colnames(mat_mob_daily_trips) 
-v_burden_codes <- unique(df_burden$country_code)
+v_burden_codes <- unique(df_burden$code)
 length(v_shape_files)   # 233
 length(v_pop_files)     # 220 
-length(v_burden_codes)  # 194
+length(v_burden_codes)  # 194 # 183
 length(v_mobil_data)    # 188
 
 countrycode::countrycode(setdiff(v_burden_codes, v_mobil_data), 'iso3c', 'country.name')
@@ -58,7 +58,7 @@ v_burden_codes[v_burden_codes %in% setdiff(v_burden_codes, v_mobil_data)]
 
 ls_all_codes = list(v_shape_files, v_pop_files, v_burden_codes, v_mobil_data)
 v_shape_pop_burden_mobil = Reduce(intersect, ls_all_codes)
-length(v_shape_pop_burden_mobil)    # 184
+length(v_shape_pop_burden_mobil)    # 184 # 179
 
 # NAs to be added to the following shape files for lack of population or travel information 
 v_nas = setdiff(v_shape_files, v_shape_pop_burden_mobil)
@@ -92,8 +92,8 @@ v_nas = setdiff(v_shape_files, v_shape_pop_burden_mobil)
 percent_pop_size_spillover = df_full_summary %>%
     count(region_name, code) %>% # group_by(region_name)
     left_join(
-        df_burden[,c('country_code', 'pop_size', 'p_spillover')], 
-        by = join_by(code == country_code)
+        df_burden[,c('code', 'pop_size', 'p_spillover')], 
+        by = join_by(code == code)
         ) %>% rename(percent_sims = n)
 
 
@@ -145,8 +145,8 @@ df_sum_stats <- df_full_summary %>%
 v_add_zeros = setdiff(v_shape_pop_burden_mobil, df_sum_stats$code)
 
 df_zeros_NAs = df_burden %>% 
-    filter(country_code %in% v_add_zeros) %>% 
-    rename(country = country_name, code = country_code) %>% 
+    filter(code %in% v_add_zeros) %>% 
+    # rename(country = country_name, code = country_code) %>% 
     select(country, code, region_name, region_code, pop_size, p_spillover) %>%
     mutate(percent_sims = 0)
 
@@ -196,7 +196,7 @@ region_codes <- c("AFR", "AMR", "EMR", "EUR", "SEAR", "WPR")
 
 walk(all_metrics, function(.curr_metric) {
     walk(region_codes, function(.reg_code) {
-        dest_dir = "figs/cepi_figs_ideas/barplots/"
+        dest_dir = "figs/barplots/"
         # dest_dir <- paste0(dest_dir, .reg_code, collapse = "")
         if (!dir.exists(dest_dir)) dir.create(dest_dir)
         # run plotting funcs
@@ -212,6 +212,29 @@ walk(all_metrics, function(.curr_metric) {
 
 
 
+# df_by_region <- df_full_summary %>% group_by(region_code, region_name) %>% 
+#     mutate(
+#         region_code = factor(region_code, levels=unique(region_code)), 
+#         per_100k = 1e5*total_infections_all_years/pop_size, 
+#         per_100k_2yrs = 1e5*years_1_2/pop_size
+#         ) %>% 
+#         summarise(
+#             region_totals = median(total_infections_all_years),
+#             region_totals_2yrs = median(years_1_2),
+#             region_totals_per100k = median(per_100k),
+#             region_totals_per100k_2yrs = median(per_100k_2yrs),
+#             q1_region_totals = quantile(total_infections_all_years, 0.25),
+#             q3_region_totals = quantile(total_infections_all_years, 0.75),
+#             q1_region_totals_2yrs = quantile(years_1_2, 0.25),
+#             q3_region_totals_2yrs = quantile(years_1_2, 0.75),
+#             q1_region_totals_per100k = quantile(per_100k, 0.25),
+#             q3_region_totals_per100k = quantile(per_100k, 0.75),
+#             q1_region_totals_per100k_2yrs = quantile(per_100k_2yrs, 0.25),
+#             q3_region_totals_per100k_2yrs = quantile(per_100k_2yrs, 0.75),
+#             .groups='keep'
+#         ) 
+
+
 df_by_region <- df_full_summary %>% group_by(region_code, region_name) %>% 
     mutate(
         region_code = factor(region_code, levels=unique(region_code)), 
@@ -219,6 +242,9 @@ df_by_region <- df_full_summary %>% group_by(region_code, region_name) %>%
         per_100k_2yrs = 1e5*years_1_2/pop_size
         ) %>% 
         summarise(
+            median_per100k = 1e5*median(total_infections_all_years) / sum(pop_size),
+            q1_per100k = 1e5*quantile(total_infections_all_years, 0.25) / sum(pop_size),
+            q3_per100k = 1e5*quantile(total_infections_all_years, 0.75) / sum(pop_size),
             region_totals = median(total_infections_all_years),
             region_totals_2yrs = median(years_1_2),
             region_totals_per100k = median(per_100k),
@@ -234,17 +260,66 @@ df_by_region <- df_full_summary %>% group_by(region_code, region_name) %>%
             .groups='keep'
         ) 
 
+barplot(df_by_region$median_per_100k, names=region_codes)
+
+metric='median_per100k'
+ymin_lims = 'q1_per100k'
+ymax_lims = 'q3_per100k'
+
+# metric='region_totals'
+# ymin_lims = 'q1_region_totals'
+# ymax_lims = 'q3_region_totals'
+
+guide_lab <- ifelse(
+    str_detect(metric, "per100k"),
+    "Infections per \n100,000 population",
+    "Infections"
+)
+
+"base_name","base_col","light_1","light_2","dark_1","dark_2"
+
+light2 = c("#8ca8d4","#ffc354","#e78279","#bd5e8d","#9a6f94","#54aabf","#fbeaa5")
+
+light1 = c("#cad7eb","#ffe3b0","#f4c5c1","#e1b5ca","#d0bcce","#b0d8e2","#fdf5d5")
+
+
+v_cols <- colorRampPalette(light2)(6) %>%
+    unlist() %>%
+    unname()
+
+df_by_region %>%
+    ggplot(aes(x = region_code, y = .data[[metric]])) +
+    geom_bar(stat = "identity", aes(fill = region_code)) +
+    geom_errorbar(
+        aes(x = region_code, ymin = .data[[ymin_lims]], ymax = .data[[ymax_lims]]),
+        width = 0.4,
+        colour = "grey33",
+        alpha = 0.9, linewidth = 1.3
+    ) +
+    scale_fill_manual(values = v_cols) +
+    theme_light(base_size = 16) +
+    theme(axis.text.x = element_text(angle = 75, hjust = 1)) +
+    guides(fill = "none") +
+    labs(x = "", y = guide_lab)
+
+dest_filename <- paste0(
+    .dest_dir, "/", "region_", .metric, ".png",
+    collapse = ""
+)
+
+
 
 ########################
 # all regions bar plot # 
 ########################
 
 region_metrics <- c('region_totals', 'region_totals_2yrs','region_totals_per100k','region_totals_per100k_2yrs')
-map(region_metrics, function(.curr_metric) {
-    gg_metrics_barplot_region(.data=df_by_region, .metric = .curr_metric)
+dest_dir = "figs/barplots_region/"
+# dest_dir <- paste0(dest_dir, .reg_code, collapse = "")
+if (!dir.exists(dest_dir)) dir.create(dest_dir)
+walk(region_metrics, function(.curr_metric) {
+    gg_metrics_barplot_region(.data=df_by_region, .metric = .curr_metric, .dest_dir = dest_dir)
 })
-
-gg_metrics_barplot_region(.data=df_by_region, .metric = .curr_metric)
 
 
 
@@ -265,15 +340,17 @@ gg_metrics_barplot_region(.data=df_by_region, .metric = .curr_metric)
 library('countrycode')
 
 # get world map data for plotting 
-world <- ne_countries(scale = "large", returnclass = "sf") %>%
-    filter(!str_detect(admin, 'arctica')) %>%
-    mutate(country_code = countrycode(world$name, 'country.name', 'iso3c'))
+world <- ne_countries(scale = "large", returnclass = "sf") %>% 
+    filter(!str_detect(admin, 'arctica')) 
+world <- world %>%
+    mutate(code = countrycode(world$name, 'country.name', 'iso3c'))
 # world <- world[, ]
-world$country_code[world$name=='USA'] = 'USA'
+world$codecode[world$name=='USA'] = 'USA'
+
 
 wrld_joined_full <- left_join(
     world, df_sum_stats_zeros_NAs,
-    by = join_by( == code) # adm0_a3  
+    by = join_by(code == code) # adm0_a3  
 ) # %>% filter(region_code == 'AFR')
 
 
@@ -298,7 +375,7 @@ region_codes <- c("AFR", "AMR", "EMR", "EUR", "SEAR", "WPR")
 
 walk(all_metrics, function(.curr_metric) {
     walk(region_codes, function(.reg_code) {
-        dest_dir <- paste0("figs/cepi_figs_ideas/maps/", .reg_code, collapse = "")
+        dest_dir <- paste0("figs/maps_region/", .reg_code, collapse = "")
         if (!dir.exists(dest_dir)) dir.create(dest_dir)
         # run plotting funcs
         gg_metrics_map(
@@ -309,6 +386,8 @@ walk(all_metrics, function(.curr_metric) {
         )
     })
 }, .progress = T)
+
+
 
 
 # global maps
@@ -338,7 +417,7 @@ wrld_joined_full <- left_join(
 
 
 
-dest_dir <- "figs/cepi_figs_ideas/global_maps"
+dest_dir <- "figs/maps_global"
 # dest_dir <- paste0(dest_dir, .reg_code, collapse = "")
 if (!dir.exists(dest_dir)) dir.create(dest_dir)
 
@@ -350,5 +429,63 @@ walk(all_metrics, function(.curr_metric) {
         .dest_dir = dest_dir
     )
 }, .progress = T)
+
+
+
+
+
+# get simulation outbreak course 
+
+#
+
+
+
+
+# 64 # 90 is amazing 
+# pick a simulation from n_spread 
+n_spread <- data.frame(unlist(table(df_results_summary$simulation)))
+colnames(n_spread) <- c("simulation", "n_countries")
+n_spread
+
+df_sim = df_full_summary %>% filter(simulation==90) %>% arrange(outbreak_start_day) %>%
+    mutate(
+        per_100k = 1e5*total_infections_all_years/pop_size, 
+        per_100k_2yrs = 1e5*years_1_2/pop_size
+    )
+
+wrld_joined_full <- left_join(
+    world, df_sim,
+    by = join_by(adm0_a3 == code)
+) # %>% filter(region_code == 'AFR')
+
+library('grid')
+dest_dir <- "figs/outbreak_progression"
+if (!dir.exists(dest_dir)) dir.create(dest_dir)
+
+walk(1:nrow(df_sim), function(.sim_index) {
+    ccodes_filter <- df_sim$code[1:.sim_index]
+    start_day <- df_sim$outbreak_start_day[.sim_index]
+    grob <- grobTree(
+        textGrob(
+            paste("Outbreak start day: ", start_day, sep=''), x=0.05,  y=0.1, hjust=0,
+            gp=gpar(col="black", fontsize=15, fontface="bold")
+            ))
+
+    gg_map_outbreak_progress(
+        .wrld_joined_full=wrld_joined_full,
+        .metric='per_100k_2yrs', #years_1_2
+        .filter_codes=ccodes_filter,
+        .grob=grob,
+        .start_day=start_day,
+        .dest_dir = dest_dir
+    )
+}, .progress = T)
+
+
+# source('model/utils.R')
+# all_filepaths = list.files(dest_dir, full.names = T)
+# gif_maker(all_filepaths, "outbreak_progression", dest_dir, .fps = 1)
+
+
 
 
