@@ -10,7 +10,12 @@ library("ggplot2")
 # read in data #
 ################
 
-res_dir <- "res/importation_model_parallelised"
+# res_dir <- "res/imp_mod_2023_suit_incidence"
+### slower, lower median 
+res_dir <- "res/importation_model_parallelised" ## old results 
+# higher median, more spread 
+# res_dir = './res/faster_spread'     # save results in this dir 
+
 # get all file paths
 all_files <- list.files(res_dir, "RDS", full.names = T) %>%
     str_sort(numeric = TRUE) # %>% .[1:20]
@@ -58,7 +63,10 @@ df_all_sims_sum$code %>% unique %>% length
 # total number of simulations 
 df_all_sims_sum$simulation %>% unique %>% length
 # how many countries per simulation 
-df_all_sims_sum %>% group_by(simulation) %>% count() %>% print(n=100)
+counts = df_all_sims_sum %>% group_by(simulation) %>% count()
+counts %>% print(n=100)
+
+median(counts$n) %>% unlist %>% median
 
 ############## plot ####
 ########################
@@ -94,22 +102,41 @@ n_spread %>%
 # spread ~ time #
 #################
 
+cepi_prim_cols <- c(
+    "#547dbf", "#ffa500", "#db4437", "#9d0f55", "#682860", "#0080A0", "#F9DF79"
+)
 # timing of spread per region
 merge(df_all_sims_sum, n_spread, by = "simulation") %>%
-    ggplot(aes(x = timing, y = simulation)) +
-    geom_point(aes(color = n_countries), alpha = 0.5, size = 1) +
-    theme_light() +
-    scale_color_gradient2(
-        low = "#ffa500",
-        mid = "gray",
-        high = "#0080A0", # can optionally use muted()
-        midpoint = 35,
-        name = "n countries\naffected"
+    mutate(simulation = factor(simulation)) %>%
+    ggplot(aes(x = timing / 365, y = n_countries)) +
+    geom_point(aes(color = simulation), size = 2, alpha = 0.5) + 
+    # geom_point(aes(color = region_code,  size = 1/n_countries),alpha = 0.5) + 
+    scale_color_manual(
+        values = make_cepi_base_col_scheme_col_out(cepi_prim_cols, 100),
+        name = "Simulation ID"
     ) +
-    facet_wrap(vars(region_code)) +
-    labs(x = "Outbreak start (days)", y = "Simulation ID")
+    geom_vline(
+        xintercept = 100/365, col='#c73e32', 
+        linewidth=2, linetype='dashed', alpha=0.9
+        ) + 
+    geom_vline(
+        xintercept = 160/365, col='#c73e32', 
+        linewidth=2, linetype='dotted', alpha=0.9
+        ) + 
+    theme_light(base_size = 22) +
+    #    facet_wrap(vars(region_code)) +
+    labs(x = "Outbreak start (year)", y = "Number of countries affected") +
+    xlim(0, 2) +
+    # ylim(0, 100) #+
+    guides(color='none')
+
+# 'figs/spread_timing_higher_m40.png'
+ggsave(
+    filename='figs/spread_timing_zika_matched.png', dpi=330, 
+    width=3000, height=2000, units='px')
 
 
+colnames(df_all_sims_sum)
 
 
 #######################################################
@@ -205,3 +232,50 @@ df_sim_8 %>%
 df_all_sims_sum %>% filter(simulation==8)  %>% filter(duplicated(timing))
 
 dupl_df[1,'timing'] == dupl_df[2,'timing']
+
+v_timings = df_sim_8$timing %>% unique
+
+length(v_timings)
+
+df_sim_8$country %>% unique %>% length
+v_timings[duplicated(v_timings)]
+
+df_sim_8 %>% group_by(country) %>% summarise(t_start = unique(timing), .groups = 'keep') %>% 
+    arrange(t_start) %>% print(n=61)
+# 375 is duplicated 
+
+#######################################
+#### plot one simulation over time ####
+#######################################
+
+
+sub_sim = df_all_sims_long %>% filter(simulation == 98) %>%
+    mutate(country = factor(country))
+ncolrs = length(unique(sub_sim$country))
+
+
+ggplot(sub_sim, aes(time_years, daily_infections_sim)) + 
+    geom_point(aes(time_years, daily_infections_sim, color=country), alpha=0.5) + 
+    scale_color_manual(
+        values = make_cepi_base_col_scheme_col_out(cepi_prim_cols, ncolrs),
+        name = "Simulation ID"
+    ) +
+    geom_vline(
+        xintercept = 100/365, col='#c73e32', 
+        linewidth=2, linetype='dashed', alpha=0.9
+        ) + 
+    geom_vline(
+        xintercept = 160/365, col='#c73e32', 
+        linewidth=2, linetype='dotted', alpha=0.9
+        ) + 
+    theme_light(base_size = 22) + 
+    xlim(0,4) + 
+    labs(x = "Time / years", y = "Daily incidence") +
+    guides(color='none')
+
+ggsave(
+    filename='figs/simulation_98.png', dpi=330, 
+    width=3000, height=2000, units='px')
+
+print(counts, n=100)
+
