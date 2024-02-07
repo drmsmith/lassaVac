@@ -10,7 +10,8 @@ source('model/utils.R')
 # define simulation parameters
 set.seed(31124)
 # unlink(res_dir)
-res_dir = './res/importation_model_par'     # save results in this dir 
+# res_dir = './res/imp_mod_2023_suit_incidence'     # save results in this dir 
+res_dir = './res/slow_spread'     # save results in this dir 
 n_simulations = 100                      # number of simulations
 duration_spread <- 365*2                # simulation time span
 infectiousness_duration <- 7    # infected individual can infect days
@@ -19,7 +20,11 @@ infectiousness_duration <- 7    # infected individual can infect days
 # pop-weighted suitability
 # f * suit ^ k 
 fact_f = 0.1
-fact_k = 4.5
+fact_k = 12
+## 0.1 and 10
+
+### 100 wth 0.05 and 10 
+### 100 with 0.1 and 12 
 
 # initialise results dir 
 if (!dir.exists(res_dir)) {dir.create(res_dir, recursive = T)}
@@ -27,7 +32,8 @@ if (!dir.exists(res_dir)) {dir.create(res_dir, recursive = T)}
 
 # suitability (instead of estd. infections)
 # suitability info for 220 countries
-df_burden <- read.csv("data/df_suit_means_pop_wght_pop_size_who_regions.csv")
+df_burden <- read.csv("data/df_suit_means_pop_wght_pop_size_who_p_spillover.csv")
+colnames(df_burden)
 
 # mobility data (daily trips between src and dest)
 # mobility info for 188 countries
@@ -39,7 +45,7 @@ rownames(mat_mob_daily_trips) <- all_codes
 # since there are fewer countries on the mobility data set 
 # 220 vs 188 (suit vs mobility)
 # final number is 184 for some reason
-df_burden <- filter(df_burden, country_code %in% all_codes) %>% drop_na()
+df_burden <- filter(df_burden, code %in% all_codes) %>% drop_na()
 
 
 #########################
@@ -101,12 +107,12 @@ foreach(sim_i = icount(n_simulations), .combine = f(n_simulations)) %dopar% {
     # (to be updated in loop with spread model)
     m_spread <- matrix(0, nrow = nrow(df_burden), ncol = duration_spread)
     colnames(m_spread) <- 1:duration_spread
-    rownames(m_spread) <- df_burden$country_code
+    rownames(m_spread) <- df_burden$code
 
     # starting catchment
     # identify first catchment, add to vector of infected catchments, update spread matrix
-    catchment0 <- sample(df_burden$country_code, size = 1, prob = df_burden$p_spillover)
-    catchment0_pop_size <- df_burden$pop_size[df_burden$country_code == catchment0]
+    catchment0 <- sample(df_burden$code, size = 1, prob = df_burden$p_spillover)
+    catchment0_pop_size <- df_burden$pop_size[df_burden$code == catchment0]
 
     # initialise vec_catchments_infected
     vec_catchments_infected <- catchment0
@@ -115,8 +121,8 @@ foreach(sim_i = icount(n_simulations), .combine = f(n_simulations)) %dopar% {
 
     # subset relevant data
     df_catchment0 <- df_burden[
-        df_burden$country_code == catchment0,
-        c("country_name", "country_code", "region_name", "region_code", "pop_size")
+        df_burden$code == catchment0,
+        c("country", "code", "region_name", "region_code", "pop_size")
     ]
 
 
@@ -147,7 +153,7 @@ foreach(sim_i = icount(n_simulations), .combine = f(n_simulations)) %dopar% {
             # proportion of infectious population
             prop_infectious <- n_infectious / pop_size
             # all catchments not currently infected
-            uninfected_ccodes <- df_burden$country_code[!df_burden$country_code %in% vec_catchments_infected]
+            uninfected_ccodes <- df_burden$code[!df_burden$code %in% vec_catchments_infected]
             # filter out ccodes with no travel between countries to save comp time
             no_travel <- all_codes[mat_mob_daily_trips[catchment_infect_j, ] == 0]
             # leave countries not yet infected but where there is travel between source and dest
@@ -167,7 +173,7 @@ foreach(sim_i = icount(n_simulations), .combine = f(n_simulations)) %dopar% {
 
                 # probability of outbreak starting = suitability
                 ####################################################### CHANGE BACK TO POP WEIGHTED
-                p_outbreak <- df_burden$mean_pop_wght_transfrm[df_burden$country_code == catchment_suscept_k]
+                p_outbreak <- df_burden$mean_pop_wght_transfrm[df_burden$code == catchment_suscept_k]
                 outbreak_i_j <- rbinom(1, 1, p_outbreak)
 
 
@@ -184,8 +190,8 @@ foreach(sim_i = icount(n_simulations), .combine = f(n_simulations)) %dopar% {
 
                     # subset relevant data
                     df_suscept_country <- df_burden[
-                        df_burden$country_code == catchment_suscept_k,
-                        c("country_name", "country_code", "region_name", "region_code", "pop_size")
+                        df_burden$code == catchment_suscept_k,
+                        c("country", "code", "region_name", "region_code", "pop_size")
                     ]
 
                     # generate outbreak data

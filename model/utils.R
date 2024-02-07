@@ -75,8 +75,8 @@ generate_outbreak <- function(
     # and additional info for plotting / summary  
     df_res_curve <- data.frame(daily_infections_sim = v_daily_infections) %>%
         mutate(
-            country = df_country_data$country_name,
-            code = df_country_data$country_code,
+            country = df_country_data$country,
+            code = df_country_data$code,
             region_name = df_country_data$region_name,
             region_code = df_country_data$region_code,
             pop_size = df_country_data$pop_size,

@@ -31,9 +31,11 @@ v_country_codes <- intersect(v_pop_files, v_shape_files) # 220
 
 
 # load and suitability map 
-suitability <- raster('data/2016_chikv_suitability.tif')
+suitability <- raster('data/prediction_map_2500CRSMasked.tif')
 terra_suit <- terra::rast(suitability)
 
+# cols = colorRampPalette(c('#8ca8d4', '#fbeaa5', '#e78279'))(10)
+# plot(suitability, col=cols)
 
 # compute means 
 # both mean and population weighted mean
