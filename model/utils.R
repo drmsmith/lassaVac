@@ -1,5 +1,12 @@
 library('magick', quietly = T, warn.conflicts = F)
 library('tidyverse')
+library('conflicted')
+conflicts_prefer(
+    dplyr::filter(),
+    stats::lag(),
+    .quiet = T
+)
+
 
 
 # paho case data
@@ -18,7 +25,7 @@ calc_daily_infections <- function(
     n_lags = infectiousness_duration-1 # sum today and infectiousness_duration-1 days 
     df_lags = map( # returns list of lagged vectors 
         1:n_lags, 
-        function(.lag_dur) lag(v_daily_infections, n=.lag_dur)
+        function(.lag_dur) dplyr::lag(v_daily_infections, n=.lag_dur)
         )
     # change names to suppress error messages 
     names(df_lags) = paste0('lag_', 1:n_lags)
@@ -44,26 +51,94 @@ calc_daily_infections <- function(
 # identical(calc_daily_infections(catchment0_daily_infections, 7),daily_infectious_ppl)
 
 
-generate_outbreak <- function(
+# generate_outbreak_by_pop_size <- function(
+#     sim_day = NULL, # current day of simulation time
+#     df_country_data = NULL, # total population size of source country
+#     sim_i = NULL, # simulation number/index
+#     fix_pop_affected = NULL, # numeric for proportion of population, everything else = random
+#     infectiousness_duration = 7 # days
+#     ) {
+#     pop_size <- df_country_data$pop_size
+#     # select paho curve
+#     curve_code <- sample(paho_codes, size = 1)
+#     paho_curve <- df_paho_daily_cases$daily_cases[df_paho_daily_cases$code == curve_code]
+#     # outbreak size = total infections
+#     outbreak_size <- sum(paho_curve)
+#     # choose a random % population affected (20-60%)
+#     if (!is.null(fix_pop_affected) & is.numeric(fix_pop_affected)) { 
+#         # pop affected is percentage times population size
+#         pop_affected <- fix_pop_affected * pop_size
+#     } else {
+#         pop_affected <- runif(1, 0.2, 0.6) * pop_size
+#     }
+#     # factor to scale up daily infections accordingly
+#     curve_factor <- pop_affected / outbreak_size
+#     # new vector of daily infections
+#     v_daily_infections <- round(paho_curve * curve_factor)
+#     # vector of daily infectious individuals for travelling
+#     v_daily_infectious_ppl <- calc_daily_infections(v_daily_infections, infectiousness_duration)
+
+#     # long format df with all daily infections 
+#     # and additional info for plotting / summary  
+#     df_res_curve <- data.frame(daily_infections_sim = v_daily_infections) %>%
+#         mutate(
+#             country = df_country_data$country,
+#             code = df_country_data$code,
+#             region_name = df_country_data$region_name,
+#             region_code = df_country_data$region_code,
+#             pop_size = df_country_data$pop_size,
+#             simulation = sim_i,
+#             time_days = (1:length(v_daily_infections)) + (sim_day - 1),
+#             time_years = time_days / 365.25,
+#             timing = sim_day,
+#             IncCumul_U_final = sum(v_daily_infections)
+#         )
+
+#     # one-line df with all params relating to sim 
+#     # and additional info e.g. totals for plotting / summary 
+#     df_res_summary <- df_res_curve[1, c(
+#         'country', 'code', 'region_name', 'region_code',
+#         'pop_size', 'simulation', 'timing', 'IncCumul_U_final'
+#         )] %>%
+#         mutate(
+#             duration = length(v_daily_infections) / 365.25,
+#             paho_curve_code = curve_code,
+#             prop_pop_affected = sum(v_daily_infections) / df_country_data$pop_size 
+#         )
+#     # return lst of 
+#     # vector of daily infectious people + the two dfs
+#     ls_outbreak <- list(
+#         v_daily_new_infections = v_daily_infectious_ppl,
+#         df_res_curve = df_res_curve,
+#         df_res_summary = df_res_summary
+#     )
+
+#     return(ls_outbreak)
+# }
+
+
+
+
+
+### TO ADJUST RANGE FOR RANDOM GENERATION GO TO 
+# pop_affected <- runif(1, 0.2, 0.6) * annual_incidence
+generate_outbreak_by_annual_incidence <- function(
     sim_day = NULL, # current day of simulation time
     df_country_data = NULL, # total population size of source country
     sim_i = NULL, # simulation number/index
-    fix_pop_affected = NULL, # numeric for proportion of population, everything else = random
+    prop_adj = 1, # numeric for proportion of population, everything else = random
     infectiousness_duration = 7 # days
     ) {
     pop_size <- df_country_data$pop_size
+    annual_incidence <- df_country_data$annual_incidence
     # select paho curve
     curve_code <- sample(paho_codes, size = 1)
     paho_curve <- df_paho_daily_cases$daily_cases[df_paho_daily_cases$code == curve_code]
-    # outbreak size = total infections
+    # outbreak size = total infections (for PAHO data)
     outbreak_size <- sum(paho_curve)
-    # choose a random % population affected (20-60%)
-    if (!is.null(fix_pop_affected) & is.numeric(fix_pop_affected)) { 
-        # pop affected is percentage times population size
-        pop_affected <- 0.5 * pop_size
-    } else {
-        pop_affected <- runif(1, 0.2, 0.6) * pop_size
-    }
+    # adjust simulated outbreak size 
+    # pop affected is percentage times population size
+    pop_affected <- prop_adj * annual_incidence
     # factor to scale up daily infections accordingly
     curve_factor <- pop_affected / outbreak_size
     # new vector of daily infections
@@ -80,6 +155,7 @@ generate_outbreak <- function(
             region_name = df_country_data$region_name,
             region_code = df_country_data$region_code,
             pop_size = df_country_data$pop_size,
+            annual_incidence = df_country_data$annual_incidence,
             simulation = sim_i,
             time_days = (1:length(v_daily_infections)) + (sim_day - 1),
             time_years = time_days / 365.25,
@@ -91,7 +167,7 @@ generate_outbreak <- function(
     # and additional info e.g. totals for plotting / summary 
     df_res_summary <- df_res_curve[1, c(
         'country', 'code', 'region_name', 'region_code',
-        'pop_size', 'simulation', 'timing', 'IncCumul_U_final'
+        'pop_size', 'annual_incidence', 'simulation', 'timing', 'IncCumul_U_final'
         )] %>%
         mutate(
             duration = length(v_daily_infections) / 365.25,
@@ -108,6 +184,9 @@ generate_outbreak <- function(
 
     return(ls_outbreak)
 }
+
+
+
 
 
 

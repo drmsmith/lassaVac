@@ -11,6 +11,7 @@ figs
 handover_and_TODO.pptx
 methods
 test
+res
 
 # data files too large to include
 data/gadm
@@ -20,6 +21,4 @@ data/2020_UNadj_worldpop_data
 preprocessing/misc.R
 preprocessing/suitability/misc.R
 
-res/importation_model_30_morning
-res/importation_model_parallelised
-res/OLD_model
+

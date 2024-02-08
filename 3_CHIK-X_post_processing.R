@@ -11,10 +11,17 @@ library("ggplot2")
 ################
 
 # res_dir <- "res/imp_mod_2023_suit_incidence"
+
+####### outbreak size ~ pop size 
 ### slower, lower median 
-res_dir <- "res/importation_model_parallelised" ## old results 
+# res_dir <- "res/importation_model_parallelised" ## old results 
 # higher median, more spread 
 # res_dir = './res/faster_spread'     # save results in this dir 
+
+####### outbreak size = annual incidence
+res_dir = './res/outbreak_annual_inc'
+
+
 
 # get all file paths
 all_files <- list.files(res_dir, "RDS", full.names = T) %>%
