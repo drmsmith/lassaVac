@@ -18,6 +18,7 @@ data/gadm
 data/gadm_merged_shp
 data/sf_region_summary_merged_with_warnings
 data/2020_UNadj_worldpop_data
+data/2019_UNadj_worldpop_data
 preprocessing/misc.R
 preprocessing/suitability/misc.R
 
