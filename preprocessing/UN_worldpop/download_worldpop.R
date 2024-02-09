@@ -17,7 +17,10 @@ conflicts_prefer(
 ################################################
 
 # countries 
-suit_country_codes <- unique(suit_per_country$country_code)
+v_ccodes <- list.files("data/gadm", pattern = ".rds") %>%
+    str_remove("gadm41_") %>%
+    str_remove("_0_pk.rds") %>%
+    toupper()
 
 #################################################################
 # download worldpop UN-adjusted data from 2016 (1km aggregated) #
@@ -25,14 +28,15 @@ suit_country_codes <- unique(suit_per_country$country_code)
 
 # load downld_worldpop_UNadj1km()
 source("preprocessing/UN_worldpop/utils.R")
-dest_dir = 'data/2020_UNadj_worlpop_data'
+# dest_dir = 'data/2020_UNadj_worlpop_data'
+dest_dir = 'data/2019_UNadj_worlpop_data'
 # unlink(dest_dir, recursive = T) # deletes folder and contents 
 if (!dir.exists(dest_dir)) dir.create(dest_dir)
 
 
 # parameters 
-v_country_codes = suit_country_codes # vector of strings
-s_year = '2020' # string
+v_country_codes = v_ccodes # vector of strings
+s_year = '2019' # string
 
 
 # will return 1 for successful download and
@@ -53,9 +57,16 @@ downlds <- map(v_country_codes,
 downlds[downlds!='1'] %>%
     countrycode(origin = 'iso3c', destination = 'country.name') %>% 
     cat(sep=', ')
+#### 2020 data 
 # ATF, GGY, CXR, JEY, PCN, SGS
 # French Southern Territories, Guernsey, 
 # Christmas Island, Jersey, Pitcairn Islands, 
+# South Georgia & South Sandwich Islands
+#### 2019 data 
+# AGO ATA ATF CCK CXR GGY JEY NFK PCN SGS
+# Angola, Antarctica, French Southern Territories, 
+# Cocos (Keeling) Islands, Christmas Island, Guernsey, 
+# Jersey, Norfolk Island, Pitcairn Islands, 
 # South Georgia & South Sandwich Islands
 
 # check for failed downloads 
