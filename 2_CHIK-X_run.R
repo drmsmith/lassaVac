@@ -18,7 +18,7 @@
 # all_codes = colnames(mat_mob_p)
 # rownames(mat_mob_p) = all_codes
 
-# # SHAPE PARAMETERS TO BE SAMPLED FROM
+# # OUTBREAK CURVE SHAPES TO BE SAMPLED FROM
 # # based on PAHO outbreak data
 # # sampling parameters from curve fits to simulate outbreaks
 # curve_shape_params = read.csv("data/df_shape_params_PAHO_cases_adj.csv")
@@ -41,9 +41,11 @@ set.seed(31124)
 ### fact_f and fact_k   100 sims with 0.1 and 12 
 
 ##### NOW OUTBREAK SIZE = ANNUAL INCIDENCE 
-res_dir = './res/tmp_outbreak_refactor'
+# unlink(res_dir, recursive = T)
+res_dir = 'res/tmp_outbreak_refactor'
+# tmp_outbreak_refactor replicates unfactored code 
 
-n_simulations = 10                      # number of simulations
+n_simulations = 100                      # number of simulations
 duration_spread <- 365*2                # simulation time span
 infectiousness_duration <- 7    # infected individual can infect days
 
@@ -51,7 +53,7 @@ infectiousness_duration <- 7    # infected individual can infect days
 # pop-weighted suitability
 # f * suit ^ k 
 fact_f = 1
-fact_k = 0.01
+fact_k = 1 # 0.01 this effectively makes p_outbreak=1 
 ## 0.1 and 10
 
 
@@ -67,8 +69,9 @@ simulation_hyperparameters = list(
 
 
 # suitability (instead of estd. infections)
-# suitability info for 220 countries
-df_burden <- read.csv("data/df_suit_means_pop_wght_pop_size_who_p_spillover.csv")
+# df_suit_means_pop_wght_pop_size_who_p_spillover
+    # suitability info for 220 countries -- 2020 data 
+df_burden <- read.csv("data/2019ppp_df_suit_means_pop_wght_pop_size_who_p_spillover.csv")
 
 
 # mobility data (daily trips between src and dest)
@@ -92,8 +95,5 @@ paho_codes <- df_paho_outbreak_sizes$code
 
 
 
-
 # FINALLY, RUN SIMULATION
 f_run_sim(sim_hyperparams=simulation_hyperparameters, parallel = FALSE)
-
-# is.character(simulation_hyperparameters$res_dir)

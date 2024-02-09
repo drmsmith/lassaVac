@@ -104,9 +104,13 @@ source('model/utils.R')
 # start simulation, init cond #
 ###############################
 
-f_init_sim <- function(sim_i) {
+f_init_sim <- function(sim_i, data_files, sim_hyperparams) {
     # matrix of spread across catchments
     # (to be updated in loop with spread model)
+    df_burden <- data_files$df_burden
+    duration_spread <- sim_hyperparams$duration_spread
+    infectiousness_duration <- sim_hyperparams$infectiousness_duration
+
     m_spread <- matrix(0, nrow = nrow(df_burden), ncol = duration_spread)
     colnames(m_spread) <- 1:duration_spread
     rownames(m_spread) <- df_burden$code
@@ -137,12 +141,12 @@ f_init_sim <- function(sim_i) {
         df_country_data = df_catchment0,
         prop_adj = 1,       # outbreak size = 1 * annual_incidence 
         infectiousness_duration = infectiousness_duration,
-        sim_i = sim_i
+        sim_i = sim_i, 
+        data_files = data_files
     )
 
     # list$'country code' = ls_outbreak_info
     ls_outbreaks <- setNames(list(outbreak_0), catchment0)
-
     return(list(
         ls_outbreaks=ls_outbreaks, 
         m_spread=m_spread, 
@@ -153,11 +157,16 @@ f_spread_outbreak <- function(
     vec_catchments_infected,
     ls_outbreaks,
     m_spread,
-    duration_spread, 
-    mat_mob_daily_trips, 
-    df_burden, 
+    data_files,
+    sim_hyperparams,
     sim_i
     ) {
+    df_burden <- data_files$df_burden
+    mat_mob_daily_trips <- data_files$mat_mob_daily_trips  
+    all_codes <- colnames(mat_mob_daily_trips)
+    duration_spread <- sim_hyperparams$duration_spread
+    infectiousness_duration <- sim_hyperparams$infectiousness_duration
+
     # go through outbreak and update matrices day-by-day
     for (day_i in 1:duration_spread) {
         # for each catchment currently infected
@@ -218,7 +227,8 @@ f_spread_outbreak <- function(
                     new_outbreak <- generate_outbreak_by_annual_incidence(
                         sim_day = day_i, df_country_data = df_suscept_country,
                         prop_adj = 1, infectiousness_duration = infectiousness_duration,
-                        sim_i = sim_i
+                        sim_i = sim_i, 
+                        data_files = data_files
                     )
                     # append as 'country code' = ls_outbreak_info
                     ls_outbreaks <- append(
@@ -239,17 +249,18 @@ f_spread_outbreak <- function(
 
 f_one_sim <- function(
     sim_i, 
-    duration_spread, 
-    .print = FALSE, 
-    mat_mob_daily_trips, 
-    df_burden
+    data_files,
+    sim_hyperparams,
+    .print = FALSE
 ){
     start.time.total <- Sys.time()
     if (.print==TRUE) { 
         cat(paste0("Simulation ", sim_i, "\n", collapse = ""))
     }
+    df_burden <- data_files$df_burden
+    mat_mob_daily_trips <- data_files$mat_mob_daily_trips
     # initialise outbreak with spillover event
-    init_outbreak <- f_init_sim(sim_i)
+    init_outbreak <- f_init_sim(sim_i, data_files, sim_hyperparams)
     ls_outbreaks <- init_outbreak$ls_outbreaks
     m_spread <- init_outbreak$m_spread 
     vec_catchments_infected <- init_outbreak$vec_catchments_infected
@@ -260,29 +271,31 @@ f_one_sim <- function(
         vec_catchments_infected=vec_catchments_infected, 
         ls_outbreaks=ls_outbreaks,
         m_spread=m_spread,
-        duration_spread=duration_spread,
-        mat_mob_daily_trips=mat_mob_daily_trips, 
-        df_burden=df_burden,
+        data_files=data_files,
+        sim_hyperparams=sim_hyperparams,
         sim_i=sim_i
         )
     vec_catchments_infected=iterators_updtd$vec_catchments_infected
     ls_outbreaks=iterators_updtd$ls_outbreaks
     m_spread=iterators_updtd$m_spread
-        
     return(ls_outbreaks)
 }
 
 
 f_sim_loop <- function(
-    n_simulations, mat_mob_daily_trips, df_burden
+    n_simulations, data_files, sim_hyperparams
     ) {
+    df_burden <- data_files$df_burden
+    mat_mob_daily_trips <- data_files$mat_mob_daily_trips
+    res_dir <- sim_hyperparams$res_dir
+
     for (sim_i in 1:n_simulations) {
         start.time <- Sys.time()
 
         ls_outbreaks_sim_i <- f_one_sim(
-            sim_i, duration_spread, .print = TRUE,
-            mat_mob_daily_trips=mat_mob_daily_trips, 
-            df_burden=df_burden
+            sim_i=sim_i, 
+            data_files=data_files, 
+            sim_hyperparams=sim_hyperparams, .print = TRUE
             )
         filename <- paste0(res_dir, "/simulation_", sim_i, ".RDS", collapse = "")
         saveRDS(ls_outbreaks_sim_i, file = filename)
@@ -308,7 +321,10 @@ f <- function(iterator){
 
 
 
-f_sim_loop_parallel <- function(n_simulations, mat_mob_daily_trips, df_burden) {
+f_sim_loop_parallel <- function(n_simulations, data_files, sim_hyperparams) {
+    df_burden <- data_files$df_burden
+    mat_mob_daily_trips <- data_files$mat_mob_daily_trips
+    res_dir <- sim_hyperparams$res_dir
 
     totalCores = detectCores()
     # cl <- makeCluster(totalCores[1]-1, type='SOCK')
@@ -316,12 +332,17 @@ f_sim_loop_parallel <- function(n_simulations, mat_mob_daily_trips, df_burden) {
     registerDoParallel(cl)
     clusterEvalQ(cl,  library('tidyverse'))
     clusterEvalQ(cl,  source('model/utils.R'))
+    clusterEvalQ(cl,  source('model/CHIK-X_sim.R'))
     # clusterEvalQ(cl, set.seed(31124))
 
     foreach(sim_i = icount(n_simulations), .combine = f(n_simulations)) %dopar% {
         # start.time.total <- Sys.time()
         
-        ls_outbreaks_sim_i <- f_one_sim(sim_i, duration_spread, .print = FALSE)
+        ls_outbreaks_sim_i <- f_one_sim(
+            sim_i=sim_i, 
+            data_files=data_files, 
+            sim_hyperparams=sim_hyperparams,
+            .print = FALSE)
         filename <- paste0(res_dir, "/simulation_", sim_i, ".RDS", collapse = "")
         saveRDS(ls_outbreaks_sim_i, file = filename)
 
@@ -336,7 +357,11 @@ f_sim_loop_parallel <- function(n_simulations, mat_mob_daily_trips, df_burden) {
 
 
 
-f_run_sim <- function(sim_hyperparams, parallel = FALSE) {
+f_run_sim <- function(sim_hyperparams, data_files, parallel = FALSE) {
+    df_burden = data_files$df_burden
+    mat_mob_daily_trips = data_files$mat_mob_daily_trips
+    df_paho_daily_cases = data_files$df_paho_daily_cases
+    df_paho_outbreak_sizes = data_files$df_paho_outbreak_sizes
     # define and validate parameters from list
     n_simulations <- sim_hyperparams$n_simulations
     if (is.na(as.integer(n_simulations)) | n_simulations<=0) {
@@ -372,10 +397,11 @@ f_run_sim <- function(sim_hyperparams, parallel = FALSE) {
     #########################
     # transform suitability #
     #########################
-    df_burden$mean_pop_wght_transfrm <- fact_f * df_burden$mean_pop_weighted^fact_k
-    # cat("\nburden\n")
-    # cat(mean(df_burden$mean_pop_wght_transfrm))
-    # cat("\n")
+    df_burden$mean_pop_wght_transfrm <- fact_f * df_burden$mean_pd_weighted^fact_k
+    # put back in list 
+    data_files$df_burden = df_burden
+
+
     ###################
     # run simulations #
     ###################
@@ -385,21 +411,25 @@ f_run_sim <- function(sim_hyperparams, parallel = FALSE) {
     if (parallel == TRUE) {
         f_sim_loop_parallel(
             n_simulations,
-            mat_mob_daily_trips=mat_mob_daily_trips,
-            df_burden=df_burden
+            data_files, 
+            sim_hyperparams
             )
     } else {
         f_sim_loop(
             n_simulations,
-            mat_mob_daily_trips=mat_mob_daily_trips,
-            df_burden=df_burden
+            data_files, 
+            sim_hyperparams
             )
     }
+
 
     cat(paste('\nSimulations saved in "', res_dir, '".\n', sep = ""))
     end.time.total <- Sys.time()
     time.taken <- round(end.time.total - start.time.total, 2)
     print(time.taken)
+    # save a log with all the params 
+    sim_hyperparams$sim_time_mins = as.double(difftime(end.time.total, start.time.total, units = 'mins'))
+    write_log_json(simulation_hyperparameters = sim_hyperparams, dest_dir = res_dir)
     
 }
 

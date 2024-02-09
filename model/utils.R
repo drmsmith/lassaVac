@@ -1,6 +1,7 @@
 library('magick', quietly = T, warn.conflicts = F)
 library('tidyverse')
 library('conflicted')
+library('jsonlite')
 conflicts_prefer(
     dplyr::filter(),
     stats::lag(),
@@ -9,30 +10,35 @@ conflicts_prefer(
 
 
 
-# paho case data
-df_paho_daily_cases <- read.csv("data/df_paho_daily_cases.csv")
-df_paho_outbreak_sizes <- read.csv("data/df_paho_outbreak_sizes.csv")
-paho_codes <- df_paho_outbreak_sizes$code
+# # paho case data
+# df_paho_daily_cases <- read.csv("data/df_paho_daily_cases.csv")
+# df_paho_outbreak_sizes <- read.csv("data/df_paho_outbreak_sizes.csv")
+# paho_codes <- df_paho_outbreak_sizes$code
 
 
 # return the vector of the number of daily infectious individuals 
-# numeric of length v_daily_infections 
+# numeric of length v_daily_infections
 calc_daily_infections <- function(
-    v_daily_infections,         # numeric vector 
-    infectiousness_duration=7,   # integer 
-    .outbreak_cutoff_days = 365*2
-    ){
-    n_lags = infectiousness_duration-1 # sum today and infectiousness_duration-1 days 
-    df_lags = map( # returns list of lagged vectors 
-        1:n_lags, 
-        function(.lag_dur) dplyr::lag(v_daily_infections, n=.lag_dur)
-        )
-    # change names to suppress error messages 
-    names(df_lags) = paste0('lag_', 1:n_lags)
-    df_lags = bind_cols(df_lags) # convert to df 
-    df_lags = as.data.frame(list(daily=v_daily_infections, df_lags)) # combine together
-    # calc. daily infectious individuals based on duration of infectiousness 
-    daily_infectious_ppl = apply(df_lags, 1, function(.row) sum(.row, na.rm=T))
+    v_daily_infections, # numeric vector
+    data_files,
+    infectiousness_duration = 7, # integer
+    .outbreak_cutoff_days = 365 * 2
+    ) {
+    df_paho_daily_cases <- data_files$df_paho_daily_cases
+    df_paho_outbreak_sizes <- data_files$df_paho_outbreak_sizes
+    paho_codes <- df_paho_outbreak_sizes$code
+
+    n_lags <- infectiousness_duration - 1 # sum today and infectiousness_duration-1 days
+    df_lags <- map( # returns list of lagged vectors
+        1:n_lags,
+        function(.lag_dur) dplyr::lag(v_daily_infections, n = .lag_dur)
+    )
+    # change names to suppress error messages
+    names(df_lags) <- paste0("lag_", 1:n_lags)
+    df_lags <- bind_cols(df_lags) # convert to df
+    df_lags <- as.data.frame(list(daily = v_daily_infections, df_lags)) # combine together
+    # calc. daily infectious individuals based on duration of infectiousness
+    daily_infectious_ppl <- apply(df_lags, 1, function(.row) sum(.row, na.rm = T))
     return(daily_infectious_ppl)
 }
 
@@ -118,6 +124,31 @@ calc_daily_infections <- function(
 
 
 
+# creates a unique id based on date-time
+# returns string "YYMMDD_HHMMSS"
+get_dt_id <- function() {
+    id <- as.character(Sys.time()) %>%
+        substring(3, 19) %>%
+        str_replace_all(":", "") %>%
+        str_replace_all("-", "") %>%
+        str_replace_all(" ", "_")
+    return(id)
+}
+
+
+write_log_json <- function(
+    simulation_hyperparameters,   # hyper params given at start 
+    dest_dir = NULL        # where to save log
+    ) {
+    # save to dest_dir
+    id <- get_dt_id()
+    simulation_hyperparameters$id = id 
+    params_json <- toJSON(simulation_hyperparameters)
+    fname = paste0('sim_params_', id, '.json')
+    destpath = file.path(dest_dir, fname)
+    write(toJSON(params_json), destpath)
+}
+
 
 
 ### TO ADJUST RANGE FOR RANDOM GENERATION GO TO 
@@ -127,8 +158,13 @@ generate_outbreak_by_annual_incidence <- function(
     df_country_data = NULL, # total population size of source country
     sim_i = NULL, # simulation number/index
     prop_adj = 1, # numeric for proportion of population, everything else = random
-    infectiousness_duration = 7 # days
+    infectiousness_duration = 7, # days
+    data_files
     ) {
+    df_paho_daily_cases <- data_files$df_paho_daily_cases
+    df_paho_outbreak_sizes <- data_files$df_paho_outbreak_sizes
+    paho_codes <- df_paho_outbreak_sizes$code
+
     pop_size <- df_country_data$pop_size
     annual_incidence <- df_country_data$annual_incidence
     # select paho curve
@@ -144,7 +180,12 @@ generate_outbreak_by_annual_incidence <- function(
     # new vector of daily infections
     v_daily_infections <- round(paho_curve * curve_factor)
     # vector of daily infectious individuals for travelling
-    v_daily_infectious_ppl <- calc_daily_infections(v_daily_infections, infectiousness_duration)
+    v_daily_infectious_ppl <- calc_daily_infections(
+        v_daily_infections=v_daily_infections, 
+        infectiousness_duration=infectiousness_duration,
+        data_files=data_files
+        )
+
 
     # long format df with all daily infections 
     # and additional info for plotting / summary  
