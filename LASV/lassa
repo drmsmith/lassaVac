@@ -1,4 +1,4 @@
-R_script = lassa_fever_R0_0631_v6C.R
+R_script = lassa_fever_R0_0631.R
 indexed_input_files = input.csv
 indexed_output_files = output.csv
 indexed_log = log
