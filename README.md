@@ -21,8 +21,8 @@ Code for LASV transmission and vaccination, built upon estimates from a geospati
 * (2) initialise.R
   *  Generates indexed input files for branching process model from spillover incidence data ("spillover_data.csv" and "incidence_ADM_1_SampleDF_Centiles.xlsx")
 
-* (3) lassa_fever_run.R
-  *  Script to run branching process model from (1) based on inputs from (2)
+* (3) lassa
+  *  Condor job submission file to run branching process model from (1) based on inputs from (2)
 
 * (4) file_processing.R 
   *  Reformats and summarises outputs generated after running (3)
