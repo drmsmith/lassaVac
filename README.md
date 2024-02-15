@@ -3,7 +3,7 @@ This is the code associated with the upcoming preprint:
 "Projecting health and economic impacts of Lassa vaccination campaigns in West Africa"
 This code was developed by OxLiv Consortium members David R M Smith, Joanne Turner, Patrick Fahr, Paul Bessell, Emily Nixon, Koen Pouwels and Deirdre Hollingsworth.
 
-This repository includes three main sections:
+This repository includes three main sections: 
 * LASV: A branching process model describing human-to-human LASV transmission throughout "districts" (ADM1 divisions) of West Africa, and accompanying code that prunes both spillover infections and human-acquired infections among vaccinated individuals
 * LassaX: A gravity model describing the geospatial spread of Lassa-X across districts, underlying an SEIR model describing within-district Lassa-X transmission and vaccination
 * HealthEconomics: A health-economic model that post-processes epidemiological data (infection incidence over space and time) for both LASV and Lassa-X to estimate clinical and economic outcomes
