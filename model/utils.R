@@ -143,24 +143,23 @@ write_log_json <- function(
     # save to dest_dir
     id <- get_dt_id()
     simulation_hyperparameters$id = id 
-    params_json <- toJSON(simulation_hyperparameters)
     fname = paste0('sim_params_', id, '.json')
     destpath = file.path(dest_dir, fname)
-    write(toJSON(params_json), destpath)
+    write(toJSON(simulation_hyperparameters, auto_unbox = TRUE), destpath)
 }
 
 
 
-### TO ADJUST RANGE FOR RANDOM GENERATION GO TO 
-# pop_affected <- runif(1, 0.2, 0.6) * annual_incidence
 generate_outbreak_by_annual_incidence <- function(
-    sim_day = NULL, # current day of simulation time
-    df_country_data = NULL, # total population size of source country
-    sim_i = NULL, # simulation number/index
-    prop_adj = 1, # numeric for proportion of population, everything else = random
-    infectiousness_duration = 7, # days
+    sim_day = NULL, # [num] current day of simulation time
+    df_country_data = NULL, # one-row df with relevant info 
+    sim_i = NULL,   # [num] simulation number/index
+    prop_adj = 1,   # [num] runif range = [1-prop, 1+prop] (symmetric), 
+                    # prop_adj > 1 defaults to 1  
+    infectiousness_duration = 7, # [num] days
     data_files
     ) {
+    # subset relevant data 
     df_paho_daily_cases <- data_files$df_paho_daily_cases
     df_paho_outbreak_sizes <- data_files$df_paho_outbreak_sizes
     paho_codes <- df_paho_outbreak_sizes$code
@@ -173,8 +172,13 @@ generate_outbreak_by_annual_incidence <- function(
     # outbreak size = total infections (for PAHO data)
     outbreak_size <- sum(paho_curve)
     # adjust simulated outbreak size 
-    # pop affected is percentage times population size
-    pop_affected <- prop_adj * annual_incidence
+    if (is.numeric(prop_adj)) { 
+        if (prop_adj < 1) {
+            prop_factor <- runif(1, (1-prop_adj), (1+prop_adj))
+        } else { prop_factor <- 1 }
+    } else { stop('`prop_adj` must be numeric and < 1')}
+    # pop affected (= simulated outbreak size)
+    pop_affected <- prop_factor * annual_incidence
     # factor to scale up daily infections accordingly
     curve_factor <- pop_affected / outbreak_size
     # new vector of daily infections
