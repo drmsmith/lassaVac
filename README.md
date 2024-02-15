@@ -15,11 +15,11 @@ This repository includes three main sections:
 # LASV
 Code for LASV transmission and vaccination, built upon estimates from a geospatial risk map of LASV spillover from Mastomys natalensis to humans.
 
-* (1) lassa_fever_R0_0631_v6C.R
+* (1) lassa_fever_R0_0631.R
   *  Functions and parameter inputs underlying the stochastic branching process model, producing the "unpruned" model output (i.e. LASV incidence in absence of vaccination)
  
 * (2) initialise.R
-  *  Generates indexed input files for branching process model from spillover incidence data ("spillover_data_v2.csv" and "incidence_ADM_1_SampleDF_Centiles.xlsx")
+  *  Generates indexed input files for branching process model from spillover incidence data ("spillover_data.csv" and "incidence_ADM_1_SampleDF_Centiles.xlsx")
 
 * (3) lassa_fever_run.R
   *  Script to run branching process model from (1) based on inputs from (2)
