@@ -1,6 +1,8 @@
 library("tidyverse")
 library("ggplot2")
 
+source('visualisations/utils_post_proc.R')
+
 # every file is a list of three components 
 ## v_daily_infectious_ppl
 ## df_res_curve
@@ -19,47 +21,23 @@ library("ggplot2")
 # res_dir = './res/faster_spread'     # save results in this dir 
 
 ####### outbreak size = annual incidence
-res_dir = './res/outbreak_annual_inc'
+# res_dir = './res/outbreak_annual_inc'
+# res_dir = 'res/scenarios/incidence_x10'
+res_dir = 'res/scenarios/114_sim_31124'
 
+# long format full simulation results with daily infections 
+df_all_sims_long <- make_df_all_sims_long(res_dir, save=F)
+# shorter simulation summary with one row per outbreak/country 
+df_all_sims_sum <- make_df_all_sims_sum(res_dir, save=F)
 
+# get summary of years 1, 2, 1+2 and total infections
+df_summary_by_year <- make_df_summary_by_year(df_all_sims_long, save=F)
+# add duration info and other summary variables 
+df_full_summary <- make_df_full_summary(df_all_sims_sum, df_summary_by_year, save=F)
 
-# get all file paths
-all_files <- list.files(res_dir, "RDS", full.names = T) %>%
-    str_sort(numeric = TRUE) # %>% .[1:20]
-
-
-
-#############################
-# all simulations in one df #
-#############################
-
-df_all_sims_long <- map(all_files, function(dirname) {
-    res <- readRDS(dirname)
-    map(res, function(.ls_sim) .ls_sim$df_res_curve) %>% bind_rows()
-}, .progress = T) %>% bind_rows()
-
-# head(df_all_sims_long)
-# dim(df_all_sims_long)
-
-# save 
-# write.csv(df_all_sims_long, "res/import_model_sim_res_x100.csv", row.names = F)
-
-
-####################
-# summaries in one #
-####################
-
-df_all_sims_sum <- map(all_files, function(dirname) {
-    res <- readRDS(dirname)
-    map(res, function(.ls_sim) .ls_sim$df_res_summary) %>% bind_rows()
-}, .progress = T) %>% bind_rows()
-
-# head(df_all_sims_long)
-# dim(df_all_sims_long)
-
-# save 
-# write.csv(df_all_sims_sum, "res/import_model_sim_summary_x100.csv", row.names = F)
-
+# plot spread against zika v baseline
+df_zika_cumul <- make_df_zika_cumul()
+make_spread_plot(df_full_summary, df_zika_cumul)
 
 
 
@@ -74,6 +52,11 @@ counts = df_all_sims_sum %>% group_by(simulation) %>% count()
 counts %>% print(n=100)
 
 median(counts$n) %>% unlist %>% median
+mean(counts$n) %>% unlist %>% median
+
+
+
+
 
 ############## plot ####
 ########################
@@ -143,68 +126,6 @@ ggsave(
     width=3000, height=2000, units='px')
 
 
-colnames(df_all_sims_sum)
-
-
-#######################################################
-# get summary of years 1, 2, 1+2 and total infections #
-#######################################################
-
-df_summary_by_year = df_all_sims_long %>%
-    group_by(
-        simulation, country, code, region_name, region_code, 
-        pop_size, timing
-        ) %>%
-    summarise(
-        first_year = sum(
-            daily_infections_sim[time_days > timing & time_days < (timing + 365)]
-        ),
-        second_year = sum(
-            daily_infections_sim[time_days > (timing + 365) & time_days < (timing + 365 * 2)]
-        ),
-        total_infections_all_years = sum(daily_infections_sim),
-        years_1_2 = first_year + second_year,
-        .groups = 'keep'
-    ) %>% 
-    rename(outbreak_start_day = timing)
-
-df_summary_by_year[1:4,]
-
-######################
-# add duration info  #
-######################
-# (also optionally the 
-# pop affected parameter (randomly sampled) 
-# or the paho curve id)
-
-df_full_summary = df_all_sims_sum %>%
-    group_by(
-        simulation, country, code, region_name, region_code, 
-        pop_size, timing
-        ) %>%
-        select(
-            simulation, country, code, region_name, region_code,
-            pop_size, timing, duration
-            ) %>% 
-        rename(outbreak_start_day = timing, outbreak_duration_yrs = duration) %>%
-        full_join(
-            df_summary_by_year, 
-            by=c(
-                'simulation', 'country', 'code', 'region_name', 'region_code', 
-                'pop_size', 'outbreak_start_day'
-            ) 
-        )
-
-
-df_full_summary[1:4,]
-
-
-nrow(df_summary_by_year) == nrow(df_full_summary)
-
-
-# write.csv(df_full_summary, "res/import_model_100_sim_full_summary.csv", row.names = F)
-
-
 
 
 df_all_sims_long %>% filter(simulation==8) %>% .$country %>% unique
@@ -236,6 +157,7 @@ df_sim_8 %>%
     select(simulation, time_days, timing, country, daily_infections_sim) %>% head
 
 
+
 df_all_sims_sum %>% filter(simulation==8)  %>% filter(duplicated(timing))
 
 dupl_df[1,'timing'] == dupl_df[2,'timing']
@@ -250,6 +172,8 @@ v_timings[duplicated(v_timings)]
 df_sim_8 %>% group_by(country) %>% summarise(t_start = unique(timing), .groups = 'keep') %>% 
     arrange(t_start) %>% print(n=61)
 # 375 is duplicated 
+
+
 
 #######################################
 #### plot one simulation over time ####
@@ -284,5 +208,11 @@ ggsave(
     filename='figs/simulation_98.png', dpi=330, 
     width=3000, height=2000, units='px')
 
-print(counts, n=100)
+
+
+
+
+#####################################
+# K-S tests for distribution shapes #
+##################################### 
 
