@@ -1,3 +1,5 @@
+library(tidyverse)
+
 
 zika_phyl_meta = read.table('preprocessing/data/zika/nextstrain_zika_metadata.tsv', header=T, sep='\t') # _2014_2016
 
@@ -41,6 +43,19 @@ colnames(df_filter_by_date)
 #   labels = scales::number_format(accuracy = 0.01,
 #                                  decimal.mark = ','))
 
+zika_phyl_meta %>%
+    filter(date > "2014-06-01" & date < "2016-12-31") %>%
+    group_by(country) %>%
+    arrange(date) %>%
+    summarise(date = first(date)) %>%
+    add_count(country) %>%
+    arrange(date) %>%
+    mutate(
+        cumul_nspread = cumsum(n),
+        country = factor(country, levels = country),
+        date_frac = lubridate::decimal_date(as.Date(date)),
+        date_norm = date_frac - min(date_frac)
+    ) %>% arrange(date) 
 
 
 
@@ -51,7 +66,9 @@ df_filter_by_date %>%
     mutate(
         country = factor(country, levels = country),
         date_frac = lubridate::decimal_date(as.Date(date))
-    ) %>%
+    ) %>% print(n=35)
+
+
     ggplot(aes(date_frac, country)) +
     geom_point(aes(col = country)) +
     guides(color = "none") +
