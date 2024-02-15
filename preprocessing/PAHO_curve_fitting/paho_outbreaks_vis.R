@@ -38,19 +38,6 @@ countries = df_paho_long$code %>% unique
 #     filter(threshold_40 == T)
 
 
-# get cumulative cases
-df_outbreak_sizes = map(
-    unique(df_paho_subs$code), 
-    function(.ccode) {
-        data.frame(
-            code = .ccode, 
-            total_cases = filter(df_paho_subs, code == .ccode) %>% select(cases) %>% sum
-            )
-        }) %>% bind_rows 
-
-filter(df_outbreak_sizes, total_cases < 500) %>% select(code) %>% paste0(collapse="', '") %>% cat
-
-
 # excluding any place with fewer than 100 peak cases, 
 # super abrupt and strange data e.g. super short outbreaks,
 # outbreaks with total cases < 500  
@@ -114,15 +101,64 @@ ggsave(
     width = 10, height = 7, units = 'in'
 )
 
+
+
+
+
+##################################
+#### get n cases on first day ####
+##################################
+
+# helper for date format 
+m.y_func <- function(m.y) {
+    m <- month(m.y, label = T, abbr = T)
+    y <- year(m.y) %>% as.character %>% str_sub(3,4)
+    m.y_string = paste(m, y, sep='.')
+    return(m.y_string)
+}
+my_func_vec = Vectorize(m.y_func)
+
+percentage_first_report <- df_paho_subs %>% 
+    filter(cases > 1) %>%
+    group_by(country, code) %>% 
+    mutate(percentage = 100*prop.table(cases)) %>%
+    filter(date == first(date)) %>% 
+    arrange(desc(percentage)) %>%
+    left_join(df_outbreak_sizes, by = join_by(code==code))
+#    summarise(cases=cases, start_date = first(date))
+
+added_low_cases <- percentage_first_report %>% 
+    ungroup() %>% 
+    mutate(
+        date = case_when(
+            percentage > 3 ~ floor_date(as.Date(date), 'month') - months(1)
+        ), 
+        # cases = case_when(percentage > 3 ~ 0.03*total_cases)
+        cases = case_when(percentage > 3 ~ 1)
+    ) %>% drop_na %>% 
+    mutate(
+        date_frac = decimal_date(date),
+        m.y = my_func_vec(date)
+        ) %>%
+    select(date, date_frac, m.y, country, code, cases)
+
+# percentage_first_report %>% filter(percentage > 3) %>% select(code)
+
+
+df_added_lag_cases <- bind_rows(
+    added_low_cases, mutate(df_paho_subs, date = ymd(date))) %>% 
+    arrange(country, date) 
+
+
 ##########################
 # convert to daily cases #
 ########################## 
 
-df_paho_daily_cases <- map(unique(df_paho_subs$code), function(.ccode) {
+df_paho_daily_cases <- map(unique(df_added_lag_cases$code), function(.ccode) {
     # going by country
-    df_country <- filter(df_paho_long, code == .ccode)
+    df_country <- filter(df_added_lag_cases, code == .ccode)
     # filter trailing zeros
-    first_nonzero <- which(df_country$cases > 1)[1]
+    first_nonzero <- which(df_country$cases >= 1)[1]
     ## introduce lag, potentially
     # first_nonzero = ifelse(first_nonzero > 1, first_nonzero-1, first_nonzero)
     subdf <- df_country[first_nonzero:nrow(df_country), ]
@@ -143,6 +179,7 @@ df_paho_daily_cases <- map(unique(df_paho_subs$code), function(.ccode) {
 
 # save
 # write.csv(df_paho_daily_cases, 'data/df_paho_daily_cases.csv', row.names=F)
+# write.csv(df_paho_daily_cases, 'data/df_paho_daily_cases_lagged.csv', row.names=F)
 
 # df_paho_daily_cases$daily_cases  %>% cumsum %>% plot
 
@@ -158,9 +195,13 @@ ggplot(df_paho_daily_cases, aes(x=decimal_date(date), y=daily_cases)) +
     labs(x='Date', y='Daily cases')
 
 ggsave(
-    filename = 'figs/paho_cases_daily.png', dpi=330, bg='transparent',
+    # filename = 'figs/paho_cases_daily.png', dpi=330, bg='transparent',
+    filename = 'figs/paho_cases_daily_LAG.png', dpi=330, bg='transparent',
     width = 10, height = 7, units = 'in'
 )
+
+
+
 
 
 
