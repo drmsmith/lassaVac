@@ -82,8 +82,10 @@ rownames(mat_mob_daily_trips) <- all_codes
 
 # ensure mobility data and suitability data are matched 
 # since there are fewer countries on the mobility data set 
-# 220 vs 188 (suit vs mobility)
-# final number is 184 for some reason
+# 182 vs 188 (suit vs mobility)
+# final number of countries is 178 
+# 6 countries have mobility but not suitability data
+# 4 countries have suitability but no mobility data 
 df_burden <- filter(df_burden, code %in% all_codes) %>% drop_na()
 
 
