@@ -224,6 +224,9 @@ if (!interactive()) { # not run when file is sourced
 }
 
 
+
+
+
 df_paho_long <- read.csv("preprocessing/data/PAHO_case_data_2014-2017/df_PAHO_long_full.csv")
 
 
@@ -301,14 +304,9 @@ df_paho_daily_cases <- map(unique(df_added_lag_cases$code), function(.ccode) {
 }, .progress = T) %>% bind_rows() 
 
 
-# save
-# write.csv(df_paho_daily_cases, 'data/df_paho_daily_cases.csv', row.names=F)
-# write.csv(df_paho_daily_cases, 'data/df_paho_daily_cases_lagged.csv', row.names=F)
-# write.csv(df_paho_daily_cases, 'data/df_paho_daily_cases_fltrd.csv', row.names=F)
-write.csv(df_paho_daily_cases, 'data/df_paho_daily_cases_fltrd_lagged.csv', row.names=F)
-
 # plot daily cases 
-ggplot(df_paho_daily_cases, aes(x=decimal_date(date), y=daily_cases)) +
+# df_daily_cases_smooth
+ggplot(df_daily_cases_smooth, aes(x=decimal_date(date), y=daily_cases)) +
     geom_point(aes(col = country), size = 0.3) +
     geom_line(aes(col = country), linewidth=0.5) +
     # geom_histogram(aes(fill = country)) +
@@ -324,4 +322,43 @@ ggsave(
     width = 10, height = 7, units = 'in'
 )
 
+
+library(zoo)
+head(df_paho_daily_cases)
+
+
+
+
+##### this chunk is enough to smoot h
+df_daily_cases_smooth <- df_paho_daily_cases %>%
+    group_by(country, code) %>%
+    mutate_at(
+        vars("daily_cases"), 
+        list(daily_cases = ~ rollmeanr(., k = 30, fill = 1))
+        ) %>%
+    ungroup 
+
+
+# save
+# write.csv(df_paho_daily_cases, 'data/df_paho_daily_cases.csv', row.names=F)
+# write.csv(df_paho_daily_cases, 'data/df_paho_daily_cases_lagged.csv', row.names=F)
+# write.csv(df_paho_daily_cases, 'data/df_paho_daily_cases_fltrd.csv', row.names=F)
+write.csv(df_daily_cases_smooth, 'data/df_paho_daily_cases_fltrd_lagged_smooth.csv', row.names=F)
+
+# plot daily cases 
+ggplot(df_daily_cases_smooth, aes(x=decimal_date(date), y=daily_cases)) +
+    geom_point(aes(col = country), size = 0.3) +
+    geom_line(aes(col = country), linewidth=0.5) +
+    # geom_histogram(aes(fill = country)) +
+    facet_wrap(vars(code), scales = "free_y") + # country or code
+    theme_light() +
+    theme(legend.position = "none") + 
+    labs(x='Date', y='Daily cases')
+
+ggsave(
+    # filename = 'figs/paho_cases_daily.png', dpi=330, bg='transparent',
+    # filename = 'figs/paho_cases_daily_LAG.png', dpi=330, bg='transparent',
+    filename = 'figs/paho_cases_daily_roll30.png', dpi=330, bg='transparent',
+    width = 10, height = 7, units = 'in'
+)
 
