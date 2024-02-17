@@ -71,8 +71,8 @@ mean_median_trajectory <- function(wider_cumul_spread) {
         rowwise() %>%
         reframe(
             days,
-            mean_nspread =  mean(c_across(starts_with("sim"))),
-            median_nspread = median(c_across(starts_with("sim")))
+            mean_nspread =  mean(c_across(starts_with("sim")), na.rm=TRUE),
+            median_nspread = median(c_across(starts_with("sim")), na.rm=TRUE)
         )
     return(sum_cumul_spread)
 }

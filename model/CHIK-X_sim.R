@@ -112,7 +112,6 @@ f_spread_outbreak <- function(
                 n_infectious_travellers <- n_travellers * prop_infectious
                 prop_infectious_traveller <- n_infectious_travellers / n_travellers
 
-
                 ##### CALCULATE P INFECTIOUS PERSON TRAVELLING #####
                 ####################################################
                 # probability of an infected person travelling
@@ -122,7 +121,6 @@ f_spread_outbreak <- function(
                 ####################################################### CHANGE BACK TO POP WEIGHTED
                 p_outbreak <- df_burden$mean_pop_wght_transfrm[df_burden$code == catchment_suscept_k]
                 outbreak_i_j <- rbinom(1, 1, p_outbreak)
-
 
                 # if infected travels AND starts outbreak
                 # update infected catchments and corresponding m_spread matrix
@@ -282,7 +280,6 @@ f_run_sim <- function(sim_hyperparams, data_files, parallel = FALSE) {
     df_burden = data_files$df_burden
     mat_mob_daily_trips = data_files$mat_mob_daily_trips
     df_paho_daily_cases = data_files$df_paho_daily_cases
-    df_paho_outbreak_sizes = data_files$df_paho_outbreak_sizes
     # define and validate parameters from list
     n_simulations <- sim_hyperparams$n_simulations
     if (is.na(as.integer(n_simulations)) | n_simulations<=0) {

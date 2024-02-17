@@ -7,9 +7,11 @@ source('visualisations/utils_ks_test.R')
 
 
 ## summarise and plot scenario
-main_dir <- "res/scenarios_baseline_calibration" # "res/scenarios_x5" trial scenarios 
+# main_dir <- "res/scenarios_baseline_calibration" # "res/scenarios_x5" trial scenarios 
+# _PAHO_adjust # _PAHO_adjust_NOT
+main_dir <- "res/scenarios" # "res/scenarios_x5" trial scenarios 
 scenario_id <- "baseline" # file names follow this 
-pltname = 'baseline_calibration_spread.png'
+pltname = 'baseline_calibration_spread_pahoadj.png'
 plt_ncols = 3
 ### str_replace('_', ' ') for simulation_id
 ### figsize width=3300, height=1800,
@@ -17,7 +19,7 @@ plt_ncols = 3
 
 resdirs <- file.path(main_dir, dir(main_dir, pattern = scenario_id)) %>%
     str_sort(numeric=T)
-resdirs <- resdirs[c(3,1,2,6,4,5,9,7,8)]
+resdirs <- resdirs[str_detect(resdirs, '0.2')]
 
 figpath <- file.path(main_dir, dir(main_dir, pattern = 'fig'))
 if (!dir.exists(figpath)) dir.create(figpath)
@@ -29,14 +31,16 @@ if (!dir.exists(figpath)) dir.create(figpath)
 
 walk(resdirs, function(.res_dir) {
     # long format full simulation results with daily infections 
-    df_all_sims_long <- make_df_all_sims_long(.res_dir, save=TRUE)
+    df_all_sims_long <- make_df_all_sims_long(.res_dir, save_RDS=TRUE)
     # shorter simulation summary with one row per outbreak/country 
-    df_all_sims_sum <- make_df_all_sims_sum(.res_dir, save=TRUE)
+    df_all_sims_sum <- make_df_all_sims_sum(.res_dir, save_RDS=TRUE)
 
     # get summary of years 1, 2, 1+2 and total infections
-    df_summary_by_year <- make_df_summary_by_year(df_all_sims_long, save=FALSE)
+    df_summary_by_year <- make_df_summary_by_year(df_all_sims_long, save_RDS=FALSE)
     # add duration info and other summary variables 
-    df_full_summary <- make_df_full_summary(df_all_sims_sum, df_summary_by_year, save=TRUE, res_dir=.res_dir)
+    df_full_summary <- make_df_full_summary(
+        df_all_sims_sum, df_summary_by_year, save_RDS=TRUE, res_dir=.res_dir
+        )
 
 }, .progress = TRUE)
 
@@ -45,86 +49,30 @@ walk(resdirs, function(.res_dir) {
 # join all dfs for zika rate plots #
 ####################################
 
-filepaths = list.files(main_dir, pattern='sim_full_summary.csv', full.names = T, recursive = T) %>%
+filepaths = list.files(main_dir, pattern='sim_full_summary.RDS', full.names = T, recursive = T) %>%
     str_sort(numeric=T)
-filepaths <- filepaths[c(3,1,2,6,4,5,9,7,8)]
+
 
 ids = dir(main_dir, pattern = scenario_id) %>%
-    str_sort(numeric=T) %>% str_replace_all('_', ' ') %>% 
-    str_remove_all('baseline') %>% str_replace('inc ', 'inc x')
-ids <- ids[c(3,1,2,6,4,5,9,7,8)]
+    str_sort(numeric=T) %>% .[str_detect(., '0.2')] %>% 
+    str_replace_all('_inc_', 'inc x') %>%
+    str_replace_all('_', ' ') %>% 
+    str_remove_all('baseline') 
+ids
 
 
 df_all_scenarios_full_summary <- map2(filepaths, ids, function(.fpath, .id) {
-    df_full_summary <- read.csv(.fpath)
+    df_full_summary <- readRDS(.fpath)
     df_full_summary$scenario_id = .id
     return(df_full_summary)
 }) %>% bind_rows %>% mutate(scenario_id = factor(scenario_id, levels=ids))
 
+colnames(df_all_scenarios_full_summary)
 
+filter(df_all_scenarios_full_summary, code %in% c('SMR', 'SYC', 'PLW')) %>% ungroup %>%
+    select(code, scenario_id, simulation, outbreak_start_day,  total_infections_all_years)
 
-filepaths = list.files(main_dir, pattern='sim_res_long.csv', full.names = T, recursive = T) %>%
-    str_sort(numeric=T)
-filepaths <- filepaths[c(3,1,2,6,4,5,9,7,8)]
-
-df_first_day_cases <- map2(filepaths, ids, function(.fpath, .id) {
-    df_res_long <- read.csv(.fpath)
-    return(df_res_long %>% filter(time_days == 0)) # %>% mutate(scenario_id = .id)
-}, .progress=T) %>% bind_rows %>% mutate(scenario_id = factor(scenario_id, levels=ids))
-
-
-
-# plot( 100 *df_first_day_cases$daily_infections_sim / df_first_day_cases$IncCumul_U_final)
-
-df_first_day_cases %>% 
-    group_by(scenario_id) %>% 
-    group_by(scenario_id) %>% group_split
-    map(function(.df) quantile(unlist(.df[,'ncumul']), probs=seq(0,1,0.05))
-        ) %>% 
-        setNames(ids) %>% bind_rows(.id='scenario_id')
-
-
-# get spread by 100 or 160 days 
-
-spread_cumul_timing <- df_all_scenarios_full_summary %>%
-    group_by(simulation, scenario_id) %>%
-    add_count(simulation, code) %>%
-    mutate(
-        cumul_nspread = cumsum(n),
-        simulation = factor(simulation),
-        scenario_id = factor(scenario_id, levels = ids)
-    )
-
-ls_dfs_100 <- spread_cumul_timing %>% 
-    select(scenario_id, simulation, country, code, outbreak_start_day, n, cumul_nspread) %>%    
-    filter(outbreak_start_day < 100) %>% 
-    summarise(ncumul = max(cumul_nspread), .groups='keep') %>% arrange(scenario_id) %>% 
-    group_by(scenario_id) %>% group_split
-    
-quantiles_ncountries_100_days <- ls_dfs_100 %>%
-    map(function(.df) quantile(unlist(.df[,'ncumul']), probs=seq(0,1,0.05))
-    ) %>% setNames(ids) %>% bind_rows(.id='scenario_id')
-
-
-ls_dfs_160 <- spread_cumul_timing %>% 
-    select(scenario_id, simulation, country, code, outbreak_start_day, n, cumul_nspread) %>%    
-    filter(outbreak_start_day < 160) %>% 
-    summarise(ncumul = max(cumul_nspread), .groups='keep') %>% arrange(scenario_id) %>% 
-    group_by(scenario_id) %>% group_split
-    
-quantiles_ncountries_160_days <- ls_dfs_160 %>%
-    map(function(.df) quantile(unlist(.df[,'ncumul']), probs=seq(0,1,0.05))
-    ) %>% setNames(ids) %>% bind_rows(.id='scenario_id')
-
-n_countries_quantiles <- list(
-    quantiles_ncountries_100_days=quantiles_ncountries_100_days, 
-    quantiles_ncountries_160_days=quantiles_ncountries_160_days
-)
-# saveRDS(n_countries_quantiles, 'res/scenarios_baseline_calibration/n_countries_quantiles.RDS')
-q_160_mat = as.matrix(quantiles_ncountries_160_days[,2:21])
-rownames(q_160_mat) = unlist(quantiles_ncountries_160_days[,1])
-heatmap(q_160_mat)
-
+df_all_sims_long %>% filter(simulation==40, code=='PLW')
 
 ##################
 # zika rate tune #
@@ -137,10 +85,16 @@ scenario_rate_plot <- make_scenario_rate_plot_all_scenarios(
 ) 
 scenario_rate_plot
 
+
+
+df_all_scenarios_full_summary %>% ungroup %>% count(simulation)
+df_all_scenarios_full_summary[any(is.na(df_all_scenarios_full_summary))]
+
+
 # save 
 ggsave(scenario_rate_plot, # rate_tune_plot
-    filename=file.path('figs',pltname), dpi=330, 
-    width=3300, height=2800, units='px')
+    filename=file.path(main_dir, 'figs',pltname), dpi=330, 
+    width=3300, height=2000, units='px')
 
 
 ###########################
@@ -149,7 +103,7 @@ ggsave(scenario_rate_plot, # rate_tune_plot
 
 
 df_ks_tests <- map2(filepaths, ids, function(.fpath, .id) {
-    df_full_summary <- read.csv(.fpath)
+    df_full_summary <- readRDS(.fpath)
     # add cumulative timings 
     spread_cumul_timing <- df_full_summary %>%
         group_by(simulation) %>%
@@ -177,26 +131,37 @@ df_ks_tests <- map2(filepaths, ids, function(.fpath, .id) {
         statistic_mean = test_means$statistic, 
         p_val_mean = test_means$p.value, 
         statistic_median = test_medians$statistic, 
-        p_val_median = test_medians$p.value
+        p_val_median = test_medians$p.value, 
+        mae = mean(
+            abs(zika_test_cumuls$cumul_nspread - sum_cumul_spread$mean_nspread)
+            , na.rm=T)
         )
     # print(test_means)
     # print(test_medians)
-    return(df_ks_test)
-}, .progress = T) %>% bind_rows
+    
+    return(list(sum_cumul_spread=sum_cumul_spread, df_ks_test=df_ks_test))
+}, .progress = T) # %>% bind_rows
 
-rownames(df_ks_tests) <- NULL
 
-# mean
-df_ks_tests %>% select(scenario, statistic_mean, p_val_mean) %>% arrange(statistic_mean)
-# median
-df_ks_tests %>% select(scenario, statistic_median, p_val_median) %>% arrange(statistic_median)
+df_ks_test <- map(df_ks_tests, ~.x$'df_ks_test') %>% bind_rows
+rownames(df_ks_test) <- NULL
 
 # mean
-df_ks_tests %>% select(scenario, statistic_mean) %>% arrange(statistic_mean)
+df_ks_test %>% select(scenario, statistic_mean, p_val_mean) %>% arrange(statistic_mean)
 # median
-df_ks_tests %>% select(scenario, statistic_median) %>% arrange(statistic_median)
+df_ks_test %>% select(scenario, statistic_median, p_val_median) %>% arrange(statistic_median)
+
+# mean
+df_ks_test %>% select(scenario, statistic_mean) %>% arrange(statistic_mean)
+# median
+df_ks_test %>% select(scenario, statistic_median) %>% arrange(statistic_median)
 
 
+# mean absolute error 
+df_ks_test %>% select(scenario, mae) %>% arrange(mae)
+
+df_sum_cumul_spread <- map(df_ks_tests, ~.x$'sum_cumul_spread') %>% bind_rows(.id='ids')
+rownames(df_ks_test) <- NULL
 
 
 
@@ -267,5 +232,169 @@ incid_scen_n_by_160 <- ggplot(
 plts = plot_grid(incid_scen_n_by_100,incid_scen_n_by_160, labels = "AUTO", ncol=1) 
 plts
 ggsave(plts,
-    filename=file.path('figs','hists_100_160_incidence.png'), dpi=330, 
+    filename=file.path(main_dir, 'figs', 'hists_100_160_incidence.png'), dpi=330, 
     width=3500, height=2400, units='px')
+
+
+
+
+
+
+#####################
+# 0 cases countries #
+#####################
+
+df_all_scenarios_full_summary %>% filter(total_infections_all_years == 0) %>% 
+    select(
+        scenario_id, simulation, country, code, pop_size, 
+        outbreak_start_day, total_infections_all_years
+        ) 
+
+df_all_scenarios_full_summary %>% filter(total_infections_all_years == 0) %>% 
+    ungroup %>%
+    select(
+        scenario_id, simulation, country, code, pop_size
+        ) %>% count(code, country, pop_size)
+
+colnames(df_all_scenarios_full_summary)
+
+# 1 PLW   Palau        13493.    12
+# 2 SMR   San Marino   32629.     4
+# 3 SYC   Seychelles   84374.    31
+
+df_all_scenarios_full_summary %>% filter(total_infections_all_years == 0) %>% 
+    ungroup %>%
+    select(
+        scenario_id, simulation, country, code, pop_size, prop_affected
+        )
+
+
+
+
+
+
+
+
+
+
+filepaths = list.files(main_dir, pattern='sim_res_long.RDS', full.names = T, recursive = T) %>%
+    str_sort(numeric=T)
+
+df_first_day_cases <- map2(filepaths, ids, function(.fpath, .id) {
+    df_res_long <- readRDS(.fpath)
+    return(df_res_long %>% filter(time_days == 0) %>% mutate(scenario_id = .id))
+}, .progress=T) %>% bind_rows %>% mutate(scenario_id = factor(scenario_id, levels=ids))
+
+
+df_first_day_cases %>% head(n=10)
+# plot( 100 *df_first_day_cases$daily_infections_sim / df_first_day_cases$IncCumul_U_final)
+
+dfs_first_day_cases <- df_first_day_cases %>% 
+    # group_by(scenario_id) %>% 
+    group_by(scenario_id) %>% group_split %>%
+    map(function(.df) return(quantile(unlist(.df[,'daily_infections_sim']), probs=seq(0,1,0.05)))
+        ) %>% 
+        setNames(ids) %>% bind_rows(.id='scenario_id')
+
+dfs_first_day_cases_wide = dfs_first_day_cases %>% t %>% data.frame(row.names = names(.)) %>% .[-1,]
+colnames(dfs_first_day_cases_wide) = ids
+dfs_first_day_cases_wide$percentile = seq(0,1,0.05)
+
+dfs_first_day_cases_wide %>% 
+    reshape2::melt(id='percentile', variable.name='scenario_id', value.name='first_day_cases') %>% 
+    ggplot(aes(first_day_cases, percentile)) + 
+    geom_line(aes(group=scenario_id, color=scenario_id)) + 
+    theme_light() + facet_wrap(vars(scenario_id), ncol=1) + 
+    labs(y='Percentile', x='Incidence on day 1')
+
+ggsave(
+    file.path(main_dir, 'figs', 'percentiles_first_day.png'), 
+    width=4000, height=2000, units='px', bg='transparent'
+    )
+
+### per 100k on first day 
+head(df_first_day_cases)
+
+dfs_first_day_cases_100k <- df_first_day_cases %>% 
+    mutate(daily_infect_per100k = 1e5*daily_infections_sim/pop_size) %>%
+    # group_by(scenario_id) %>% 
+    group_by(scenario_id) %>% group_split %>%
+    map(function(.df) return(quantile(unlist(.df[,'daily_infect_per100k']), probs=seq(0,1,0.05)))
+        ) %>% 
+        setNames(ids) %>% bind_rows(.id='scenario_id')
+
+dfs_first_day_cases_100k_wide = dfs_first_day_cases_100k %>% t %>% data.frame(row.names = names(.)) %>% .[-1,]
+colnames(dfs_first_day_cases_100k_wide) = ids
+dfs_first_day_cases_100k_wide$percentile = seq(0,1,0.05)
+
+dfs_first_day_cases_100k_wide %>% 
+    reshape2::melt(id='percentile', variable.name='scenario_id', value.name='first_day_cases_100k') %>% 
+    ggplot(aes(first_day_cases_100k, percentile)) + 
+    geom_line(aes(group=scenario_id, color=scenario_id)) + 
+    theme_light() + facet_wrap(vars(scenario_id), ncol=1) + 
+    labs(y='Percentile', x='Incidence per 100k on day 1')
+
+ggsave(
+    file.path(main_dir, 'figs', 'percentiles_first_day_100k.png'), 
+    width=4000, height=2000, units='px', bg='transparent'
+    )
+
+
+######
+# dfs_first_day_cases_wide
+# dfs_first_day_cases_100k_wide
+# !!!!!!! 
+
+
+# get spread by 100 or 160 days 
+
+spread_cumul_timing <- df_all_scenarios_full_summary %>%
+    group_by(simulation, scenario_id) %>%
+    add_count(simulation, code) %>%
+    mutate(
+        cumul_nspread = cumsum(n),
+        simulation = factor(simulation),
+        scenario_id = factor(scenario_id, levels = ids)
+    )
+
+ls_dfs_100 <- spread_cumul_timing %>% 
+    select(scenario_id, simulation, country, code, outbreak_start_day, n, cumul_nspread) %>%    
+    filter(outbreak_start_day < 100) %>% 
+    summarise(ncumul = max(cumul_nspread), .groups='keep') %>% arrange(scenario_id) %>% 
+    group_by(scenario_id) %>% group_split
+    
+quantiles_ncountries_100_days <- ls_dfs_100 %>%
+    map(function(.df) quantile(unlist(.df[,'ncumul']), probs=seq(0,1,0.05))
+    ) %>% setNames(ids) %>% bind_rows(.id='scenario_id')
+
+df_quantiles_ncountries_100_days = quantiles_ncountries_100_days %>% t %>% data.frame(row.names = names(.)) %>% .[-1,]
+colnames(df_quantiles_ncountries_100_days) = ids
+df_quantiles_ncountries_100_days$percentile = seq(0,1,0.05)
+
+
+
+ls_dfs_160 <- spread_cumul_timing %>% 
+    select(scenario_id, simulation, country, code, outbreak_start_day, n, cumul_nspread) %>%    
+    filter(outbreak_start_day < 160) %>% 
+    summarise(ncumul = max(cumul_nspread), .groups='keep') %>% arrange(scenario_id) %>% 
+    group_by(scenario_id) %>% group_split
+    
+quantiles_ncountries_160_days <- ls_dfs_160 %>%
+    map(function(.df) quantile(unlist(.df[,'ncumul']), probs=seq(0,1,0.05))
+    ) %>% setNames(ids) %>% bind_rows(.id='scenario_id')
+
+df_quantiles_ncountries_160_days = quantiles_ncountries_160_days %>% t %>% data.frame(row.names = names(.)) %>% .[-1,]
+colnames(df_quantiles_ncountries_160_days) = ids
+df_quantiles_ncountries_160_days$percentile = seq(0,1,0.05)
+
+
+
+
+first_day_n_countries_quantiles <- list(
+    dfs_first_day_cases_wide=dfs_first_day_cases_wide,
+    dfs_first_day_cases_100k_wide=dfs_first_day_cases_100k_wide,
+    df_quantiles_ncountries_100_days=df_quantiles_ncountries_100_days, 
+    df_quantiles_ncountries_160_days=df_quantiles_ncountries_160_days
+)
+saveRDS(first_day_n_countries_quantiles, 'res/scenarios/first_day_n_countries_quantiles.RDS')
+

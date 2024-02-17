@@ -13,10 +13,8 @@ library('progress')
 source('visualisations/utils_post_proc.R')
 
 
-# NO NOISE IN THE OUTBREAK SIZE 
-
-incidence_factors <- rep(c(8, 9, 10), each=3)
-noise_params <- rep(c(0.05, 0.1, 0.2), times=3)
+incidence_factors <- rep(c(12, 15), times=1) # 8-12 and 0.1-2
+noise_params <- rep(c(0.2), each=length(incidence_factors))
 # suit_vals_new = ifelse(suit_vals < prop_boost, sqrt(2*suit_vals)/2, suit_vals)
 scenario_id <- 'baseline'
 
@@ -40,7 +38,9 @@ walk2(incidence_factors, noise_params, function(.incidence_factor, .noise_param)
     duration_spread <- 365*2                # simulation time span / days
     infectiousness_duration <- 7            # infected individual can infect / days
     outbreak_size_adj <- .noise_param       # outbreak size ranges runif(1-param, 1+param)
-    prop_boost <- 0.5
+    increased_lower_suitability <- FALSE    # TRUE: boost suitability for lower suitability countries 
+    prop_boost <- 0.5                       # proportion of suitability to boost
+
 
     # these factors transform 
     # pop-weighted suitability
@@ -75,11 +75,14 @@ walk2(incidence_factors, noise_params, function(.incidence_factor, .noise_param)
     df_burden$annual_incidence = df_burden$annual_incidence * incidence_factor# .inc_fact
 
     ###### MODIFY SUITABILITY ######
-    df_burden$mean_pd_weighted = ifelse(
-        df_burden$mean_pd_weighted < prop_boost, 
-        sqrt(2*df_burden$mean_pd_weighted)/2, 
-        df_burden$mean_pd_weighted
-        )
+    if (increased_lower_suitability == TRUE) {
+        df_burden$mean_pd_weighted = ifelse(
+            df_burden$mean_pd_weighted < prop_boost, 
+            sqrt(2*df_burden$mean_pd_weighted)/2, 
+            df_burden$mean_pd_weighted
+            )
+    }
+
 
 
     # mobility data (daily trips between src and dest)
@@ -94,18 +97,17 @@ walk2(incidence_factors, noise_params, function(.incidence_factor, .noise_param)
     # final number is 184 for some reason
     df_burden <- filter(df_burden, code %in% all_codes) %>% drop_na()
 
-    # paho case data
-    df_paho_daily_cases <- read.csv("data/df_paho_daily_cases_lagged.csv")
-    df_paho_outbreak_sizes <- read.csv("data/df_paho_outbreak_sizes.csv")
-    paho_codes <- df_paho_outbreak_sizes$code
+    # paho case data 
+    df_paho_daily_cases <- read.csv("data/df_paho_daily_cases_fltrd_lagged_smooth.csv")
+    # df_paho_outbreak_sizes <- read.csv("data/df_paho_outbreak_sizes.csv")
+    paho_codes <- unique(df_paho_daily_cases$code)
 
     # data files used by simulation 
     data_files <- list(
         df_burden = df_burden, 
         mat_mob_daily_trips = mat_mob_daily_trips,
-        df_paho_daily_cases = df_paho_daily_cases, 
-        df_paho_outbreak_sizes = df_paho_outbreak_sizes
-    )
+        df_paho_daily_cases = df_paho_daily_cases
+        )
 
     # FINALLY, RUN SIMULATION
     f_run_sim(sim_hyperparams=simulation_hyperparameters, data_files = data_files, parallel = TRUE)
@@ -114,12 +116,15 @@ walk2(incidence_factors, noise_params, function(.incidence_factor, .noise_param)
 
 
 
-## summarise and plot scenario
+# ## summarise and plot scenario
 
-main_dir <- 'res/scenarios/'
+main_dir <- 'res/scenarios'
 # resdirs = list.dirs(main_dir)[3:12]
 resdirs = dir(main_dir, pattern=scenario_id, full.name=T) %>%
     str_sort(numeric=T)
+# only 0.2 runif window
+resdirs <- resdirs[str_detect(resdirs, '0.2')]
+
 figpath = file.path(main_dir, 'figs')
 if (!dir.exists(figpath)) dir.create(figpath)
 
@@ -127,15 +132,16 @@ walk(resdirs, function(.res_dir) {
     # get all file paths
 
     # long format full simulation results with daily infections 
-    df_all_sims_long <- make_df_all_sims_long(.res_dir, save=F)
+    df_all_sims_long <- make_df_all_sims_long(.res_dir, save_RDS=TRUE)
     # shorter simulation summary with one row per outbreak/country 
-    df_all_sims_sum <- make_df_all_sims_sum(.res_dir, save=F)
+    df_all_sims_sum <- make_df_all_sims_sum(.res_dir, save_RDS=TRUE)
 
     # get summary of years 1, 2, 1+2 and total infections
-    df_summary_by_year <- make_df_summary_by_year(df_all_sims_long, save=F)
+    df_summary_by_year <- make_df_summary_by_year(df_all_sims_long, save_RDS=FALSE)
     # add duration info and other summary variables 
-    df_full_summary <- make_df_full_summary(df_all_sims_sum, df_summary_by_year, save=F)
-
+    df_full_summary <- make_df_full_summary(
+        df_all_sims_sum, df_summary_by_year, save_RDS=TRUE,  res_dir=.res_dir
+        )
 
     # plot spread against zika v baseline
     df_zika_cumul <- make_df_zika_cumul()

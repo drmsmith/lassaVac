@@ -1,4 +1,4 @@
-library('magick', quietly = T, warn.conflicts = F)
+# library('magick', quietly = T, warn.conflicts = F)
 library('tidyverse')
 library('conflicted')
 library('jsonlite')
@@ -15,6 +15,27 @@ conflicts_prefer(
 # df_paho_outbreak_sizes <- read.csv("data/df_paho_outbreak_sizes.csv")
 # paho_codes <- df_paho_outbreak_sizes$code
 
+# distribute cases randomly for a small outnreak 
+small_outbreak_spread <- function(
+    outbreak_size,          # number of cases to distribute
+    outbreak_duration=60    # number of days to distribute over 
+    # duration_spread=365*2   
+    ) {
+    # sample days with replacement for days other than first day
+    days_sampled <- sample(1:outbreak_duration, replace=T, outbreak_size-1)
+
+    df_daily_cases <- days_sampled %>% table %>% as.data.frame 
+    colnames(df_daily_cases) <- c('day', 'daily_cases')
+    df_cases_distributed <- df_daily_cases %>% 
+        mutate(day = as.character(day)) %>%
+        right_join(data.frame(day=as.character(1:outbreak_duration)), join_by(day==day)) %>%
+        mutate(day = as.numeric(day)) %>%
+        arrange(day) %>% mutate(daily_cases = replace_na(daily_cases, 0)) %>%
+        arrange(day) 
+    # increment first day to ensure one case at the start of outbreak 
+    df_cases_distributed[1,2] = df_cases_distributed[1,2] + 1 
+    return(df_cases_distributed)
+}
 
 # return the vector of the number of daily infectious individuals 
 # numeric of length v_daily_infections
@@ -24,10 +45,12 @@ calc_daily_infections <- function(
     infectiousness_duration = 7, # integer
     .outbreak_cutoff_days = 365 * 2
     ) {
-    df_paho_daily_cases <- data_files$df_paho_daily_cases
-    df_paho_outbreak_sizes <- data_files$df_paho_outbreak_sizes
-    paho_codes <- df_paho_outbreak_sizes$code
-
+    if (length(v_daily_infections) < .outbreak_cutoff_days) {
+        v_daily_infections <- c(
+            v_daily_infections, 
+            rep(0, times = (.outbreak_cutoff_days - length(v_daily_infections)))
+            )
+    }
     n_lags <- infectiousness_duration - 1 # sum today and infectiousness_duration-1 days
     df_lags <- map( # returns list of lagged vectors
         1:n_lags,
@@ -161,16 +184,11 @@ generate_outbreak_by_annual_incidence <- function(
     ) {
     # subset relevant data 
     df_paho_daily_cases <- data_files$df_paho_daily_cases
-    df_paho_outbreak_sizes <- data_files$df_paho_outbreak_sizes
-    paho_codes <- df_paho_outbreak_sizes$code
+    paho_codes <- unique(df_paho_daily_cases$code)
 
     pop_size <- df_country_data$pop_size
     annual_incidence <- df_country_data$annual_incidence
-    # select paho curve
-    curve_code <- sample(paho_codes, size = 1)
-    paho_curve <- df_paho_daily_cases$daily_cases[df_paho_daily_cases$code == curve_code]
-    # outbreak size = total infections (for PAHO data)
-    outbreak_size <- sum(paho_curve)
+
     # adjust simulated outbreak size 
     if (is.numeric(prop_adj)) { 
         if (prop_adj < 1) {
@@ -179,10 +197,23 @@ generate_outbreak_by_annual_incidence <- function(
     } else { stop('`prop_adj` must be numeric and < 1')}
     # pop affected (= simulated outbreak size)
     pop_affected <- prop_factor * annual_incidence
-    # factor to scale up daily infections accordingly
-    curve_factor <- pop_affected / outbreak_size
-    # new vector of daily infections
-    v_daily_infections <- round(paho_curve * curve_factor)
+    if (pop_affected > 50) {
+        # select paho curve
+        curve_code <- sample(paho_codes, size = 1)
+        paho_curve <- df_paho_daily_cases$daily_cases[df_paho_daily_cases$code == curve_code]
+        # outbreak size = total infections (for PAHO data)
+        outbreak_size <- sum(paho_curve)
+        # factor to scale up daily infections accordingly
+        curve_factor <- pop_affected / outbreak_size
+        # new vector of daily infections
+        v_daily_infections <- round(paho_curve * curve_factor)
+    } else if ((pop_affected <= 50)) {
+        curve_code <- 'manual'
+        v_daily_infections <- small_outbreak_spread(
+            outbreak_size = pop_affected, outbreak_duration = 60
+            )[,'daily_cases']
+    }
+
     # vector of daily infectious individuals for travelling
     v_daily_infectious_ppl <- calc_daily_infections(
         v_daily_infections=v_daily_infections, 
@@ -237,22 +268,22 @@ generate_outbreak_by_annual_incidence <- function(
 
 # make gifs of saved plots 
 # gifs saved and returned by default 
-gif_maker = function(
-    vec_img_paths,  # vector of full paths to desired images in correct order
-    file_name = 'plot_gif', # how to name the gif
-    dest_dir = getwd(),     # directory to save gif in 
-    .fps=2) {               # frames per second (multiple of 100)
-    # read all images into a list  
-    img_list <- lapply(vec_img_paths, image_read)
-    # join images 
-    img_joined <- image_join(img_list)
-    # animate at 2 frames per second by default
-    img_animated <- image_animate(img_joined, fps = .fps)
-    ## save to disk
-    img_path = paste0(dest_dir, '/', file_name, '.gif')
-    image_write(image = img_animated, path = img_path)
-    gc()
-    return(img_animated)
-}
+# gif_maker = function(
+#     vec_img_paths,  # vector of full paths to desired images in correct order
+#     file_name = 'plot_gif', # how to name the gif
+#     dest_dir = getwd(),     # directory to save gif in 
+#     .fps=2) {               # frames per second (multiple of 100)
+#     # read all images into a list  
+#     img_list <- lapply(vec_img_paths, image_read)
+#     # join images 
+#     img_joined <- image_join(img_list)
+#     # animate at 2 frames per second by default
+#     img_animated <- image_animate(img_joined, fps = .fps)
+#     ## save to disk
+#     img_path = paste0(dest_dir, '/', file_name, '.gif')
+#     image_write(image = img_animated, path = img_path)
+#     gc()
+#     return(img_animated)
+# }
 
 
