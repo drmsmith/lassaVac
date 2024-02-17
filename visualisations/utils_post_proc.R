@@ -7,25 +7,35 @@ library("ggplot2")
 
 make_df_all_sims_long <- function(
     res_dir,        # directory with rds simulation results
-    save = TRUE,    # TRUE : saved to res_dir as 'sim_res_long.csv'
+    save_CSV = FALSE,   # TRUE : saved to res_dir as 'sim_res_long.csv'
+    save_RDS = TRUE,    # TRUE : saved to res_dir as 'sim_res_long.RDS'
     dest_dir = NULL # save to alternative to res_dir
     ) {
     # get all file paths
-    all_files <- list.files(res_dir, "RDS", full.names = T) %>%
-        str_sort(numeric = TRUE) # %>% .[1:20]
+    all_files <-list.files(res_dir, "RDS", full.names = T) %>%
+        str_sort(numeric = TRUE) %>% .[str_detect(., 'simulation_')]
 
     df_all_sims_long <- map(all_files, function(dirname) {
         res <- readRDS(dirname)
         map(res, function(.ls_sim) .ls_sim$df_res_curve) %>% bind_rows()
     }, .progress = T) %>% bind_rows()
 
-    if (save == TRUE) {
+    if (save_CSV == TRUE) {
         if (!is.null(dest_dir)) {
             fpath <- file.path(res_dir, "sim_res_long.csv")
             write.csv(df_all_sims_long, fpath, row.names = F)
         } else {
             fpath <- file.path(res_dir, "sim_res_long.csv")
             write.csv(df_all_sims_long, fpath, row.names = F)
+        }
+    }
+    if (save_RDS == TRUE) {
+        if (!is.null(dest_dir)) {
+            fpath <- file.path(res_dir, "sim_res_long.RDS")
+            saveRDS(df_all_sims_long, file = fpath)
+        } else {
+            fpath <- file.path(res_dir, "sim_res_long.RDS")
+            saveRDS(df_all_sims_long, file = fpath)
         }
     }
     return(df_all_sims_long)
@@ -38,25 +48,35 @@ make_df_all_sims_long <- function(
 
 make_df_all_sims_sum <- function(
     res_dir,        # directory with rds simulation results
-    save = TRUE,    # TRUE : saved to res_dir as 'sim_summary.csv'
+    save_CSV = FALSE,   # TRUE : saved to res_dir as 'sim_summary.csv'
+    save_RDS = TRUE,    # TRUE : saved to res_dir as 'sim_summary.RDS'
     dest_dir = NULL # save to alternative to res_dir
     ) {
     # get all file paths
-    all_files <- list.files(res_dir, "RDS", full.names = T) %>%
-        str_sort(numeric = TRUE) # %>% .[1:20]
+    all_files <- all_files <-list.files(res_dir, "RDS", full.names = T) %>%
+        str_sort(numeric = TRUE) %>% .[str_detect(., 'simulation_')]
 
     df_all_sims_sum <- map(all_files, function(dirname) {
         res <- readRDS(dirname)
         map(res, function(.ls_sim) .ls_sim$df_res_summary) %>% bind_rows()
     }, .progress = T) %>% bind_rows()
 
-    if (save == TRUE) {
+    if (save_CSV == TRUE) {
         if (!is.null(dest_dir)) {
             fpath <- file.path(res_dir, "sim_summary.csv")
             write.csv(df_all_sims_sum, fpath, row.names = F)
         } else {
             fpath <- file.path(res_dir, "sim_summary.csv")
             write.csv(df_all_sims_sum, fpath, row.names = F)
+        }
+    }
+    if (save_RDS == TRUE) {
+        if (!is.null(dest_dir)) {
+            fpath <- file.path(res_dir, "sim_summary.RDS")
+            saveRDS(df_all_sims_sum, file = fpath)
+        } else {
+            fpath <- file.path(res_dir, "sim_summary.RDS")
+            saveRDS(df_all_sims_sum, file = fpath)
         }
     }
     return(df_all_sims_sum)
@@ -71,7 +91,8 @@ make_df_all_sims_sum <- function(
 
 make_df_summary_by_year <- function(
     df_all_sims_long,   # output of make_df_all_sims_long
-    save = TRUE,        # TRUE : saved to res_dir as 'sim_summary_by_year.csv'
+    save_CSV = FALSE,   # TRUE : saved to res_dir as 'sim_summary_by_year.csv'
+    save_RDS = TRUE,    # TRUE : saved to res_dir as 'sim_summary_by_year.RDS'
     res_dir = NULL      # defaults to working dir
     ) {
     df_summary_by_year <- df_all_sims_long %>%
@@ -91,12 +112,19 @@ make_df_summary_by_year <- function(
             .groups = "keep"
         ) %>%
         rename(outbreak_start_day = timing)
-    if (save == TRUE) {
+    if (save_CSV == TRUE) {
         if (is.null(res_dir) == TRUE) {
             res_dir <- getwd()
         }
         fpath <- file.path(res_dir, "sim_summary_by_year.csv")
         write.csv(df_summary_by_year, fpath, row.names = F)
+    }
+    if (save_RDS == TRUE) {
+        if (is.null(res_dir) == TRUE) {
+            res_dir <- getwd()
+        }
+        fpath <- file.path(res_dir, "sim_summary_by_year.RDS")
+        saveRDS(df_summary_by_year, file = fpath)
     }
     return(df_summary_by_year)
 }
@@ -111,7 +139,8 @@ make_df_summary_by_year <- function(
 make_df_full_summary <- function(
     df_all_sims_sum,    # output of make_df_all_sims_sum
     df_summary_by_year, # output of make_df_summary_by_year
-    save = TRUE,        # TRUE : saved to res_dir as 'sim_full_summary.csv'
+    save_CSV = FALSE,   # TRUE : saved to res_dir as 'sim_full_summary.csv'
+    save_RDS = TRUE,    # TRUE : saved to res_dir as 'sim_full_summary.RDS'
     res_dir = NULL      # defaults to working dir
     ) {
     df_full_summary <- df_all_sims_sum %>%
@@ -131,12 +160,19 @@ make_df_full_summary <- function(
                 "pop_size", "outbreak_start_day"
             )
         )
-    if (save == TRUE) {
+    if (save_CSV == TRUE) {
         if (is.null(res_dir) == TRUE) {
             res_dir <- getwd()
         }
         fpath <- file.path(res_dir, "sim_full_summary.csv")
         write.csv(df_full_summary, fpath, row.names = F)
+    }
+    if (save_RDS == TRUE) {
+        if (is.null(res_dir) == TRUE) {
+            res_dir <- getwd()
+        }
+        fpath <- file.path(res_dir, "sim_full_summary.RDS")
+        saveRDS(df_full_summary, file = fpath)
     }
     return(df_full_summary)
 }
