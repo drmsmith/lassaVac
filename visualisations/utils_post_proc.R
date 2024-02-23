@@ -254,6 +254,7 @@ make_spread_plot <- function(
         ) +
         guides(color = "none") +
         xlim(0, 2.1) +
+        coord_cartesian(expand=FALSE) + 
         # ylim(0, 120) +
         labs(
             x = "Time (years)", # x='Simulation time (years)',
@@ -304,7 +305,8 @@ make_scenario_rate_plot <- function(
             linewidth = 1.5, color = "#2e4569"# "#5f2457" # "black"
         ) + 
         guides(color = "none") +
-        xlim(0, 2) +
+        xlim(0, 2.1) +
+        coord_cartesian(expand=FALSE) + 
         labs(
             x = "Time (years)", 
             y = "Number of countries\nexperiencing outbreaks"
@@ -384,7 +386,8 @@ make_scenario_rate_plot_all_scenarios <- function(
             linetype='dashed', alpha=0.9
         ) +
         guides(color = "none") +
-        xlim(0, 2) +
+        xlim(0, 2.1) +
+        coord_cartesian(expand=FALSE) + 
         labs(
             x = "Time (years)", 
             y = "Number of countries\nexperiencing outbreaks"

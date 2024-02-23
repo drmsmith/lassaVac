@@ -9,10 +9,10 @@ source('visualisations/utils_ks_test.R')
 ## summarise and plot scenario
 # main_dir <- "res/scenarios_baseline_calibration" # "res/scenarios_x5" trial scenarios 
 # _PAHO_adjust # _PAHO_adjust_NOT
-main_dir <- "res/scenarios_15_16_17_02" # "res/scenarios_x5" trial scenarios 
+main_dir <- "res/inc_0.1-9_noise_0.1_x100" 
 scenario_id <- "baseline" # file names follow this 
 pltname = 'baseline_calibration_spread_pahoadj.png'
-plt_ncols = 3
+plt_ncols = 5
 ### str_replace('_', ' ') for simulation_id
 ### figsize width=3300, height=1800,
 
@@ -53,8 +53,11 @@ walk(resdirs, function(.res_dir) {
 filepaths = list.files(main_dir, pattern='sim_full_summary.RDS', full.names = T, recursive = T) %>%
     str_sort(numeric=T)
 
-
-x
+ids = dir(main_dir, pattern = scenario_id) %>%
+    str_sort(numeric=T) %>% # .[str_detect(., '0.2')] %>% 
+    str_replace_all('_inc_', 'inc x') %>%
+    str_replace_all('_', ' ') %>% 
+    str_remove_all('baseline') 
 # ids <- ids[c(3,1,2)]
 
 df_all_scenarios_full_summary <- map2(filepaths, ids, function(.fpath, .id) {
@@ -73,8 +76,6 @@ colnames(df_all_scenarios_full_summary)
 ##################
 # zika rate tune #
 ##################
-source('visualisations/utils_post_proc.R')
-source('visualisations/utils_ks_test.R')
 
 scenario_rate_plot <- make_scenario_rate_plot_all_scenarios(
     df_all_scenarios_full_summary, ncols=plt_ncols, ids=ids
