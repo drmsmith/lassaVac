@@ -13,8 +13,8 @@ library('progress')
 source('visualisations/utils_post_proc.R')
 
 
-incidence_factors <- rep(c(12, 15), times=1) # 8-12 and 0.1-2
-noise_params <- rep(c(0.2), each=length(incidence_factors))
+incidence_factors <- rep(c(0.9, 1), times=1) # seq(0.1, 0.5, by=0.1) # seq(0.6,1, by=0.1)
+noise_params <- rep(c(0.1), each=length(incidence_factors))
 # suit_vals_new = ifelse(suit_vals < prop_boost, sqrt(2*suit_vals)/2, suit_vals)
 scenario_id <- 'baseline'
 
@@ -64,11 +64,11 @@ walk2(incidence_factors, noise_params, function(.incidence_factor, .noise_param)
 
 
     # annual incidence, population size, suitability 
-    df_burden <- read.csv("data/2019ppp_pd_df_suit_means_who_p_spillover.csv")
-    # 2019ppp_df_suit_means_pop_wght_pop_size_who_p_spillover
+    df_burden <- read.csv("data/2019ppp_df_suit_means_pop_wght_pop_size_who_p_spillover.csv")
+    # 2019ppp_pd_df_suit_means_who_p_spillover = wrong incidence
         # when changing df burden make sure that the corresponding 
         # suitability columns are named appropriately in chik-x_sim.R
-        # e.g. df_burden$mean_pop_wght_transfrm <- fact_f * df_burden$mean_pd_weighted^fact_k  
+        # e.g. df_burden$mean_pop_wght_transfrm <- fact_f * df_burden$mean_ppp_weighted^fact_k  
 
 
     ####### MODIFY ANNAL INCIDENCE #######
@@ -76,10 +76,10 @@ walk2(incidence_factors, noise_params, function(.incidence_factor, .noise_param)
 
     ###### MODIFY SUITABILITY ######
     if (increased_lower_suitability == TRUE) {
-        df_burden$mean_pd_weighted = ifelse(
-            df_burden$mean_pd_weighted < prop_boost, 
-            sqrt(2*df_burden$mean_pd_weighted)/2, 
-            df_burden$mean_pd_weighted
+        df_burden$mean_ppp_weighted = ifelse(
+            df_burden$mean_ppp_weighted < prop_boost,  # used to be mean_pd_weighted
+            sqrt(2*df_burden$mean_ppp_weighted)/2, 
+            df_burden$mean_ppp_weighted
             )
     }
 
@@ -116,14 +116,14 @@ walk2(incidence_factors, noise_params, function(.incidence_factor, .noise_param)
 
 
 
-# ## summarise and plot scenario
+### summarise and plot scenario
 
 main_dir <- 'res/scenarios'
 # resdirs = list.dirs(main_dir)[3:12]
 resdirs = dir(main_dir, pattern=scenario_id, full.name=T) %>%
     str_sort(numeric=T)
 # only 0.2 runif window
-resdirs <- resdirs[str_detect(resdirs, '0.2')]
+# resdirs <- resdirs[str_detect(resdirs, '0.2')]
 
 figpath = file.path(main_dir, 'figs')
 if (!dir.exists(figpath)) dir.create(figpath)
