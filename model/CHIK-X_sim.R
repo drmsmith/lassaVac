@@ -314,8 +314,8 @@ f_run_sim <- function(sim_hyperparams, data_files, parallel = FALSE) {
 
     #########################
     # transform suitability #
-    #########################
-    df_burden$mean_pop_wght_transfrm <- fact_f * df_burden$mean_pd_weighted^fact_k
+    #########################                               # mean_pd_weighted
+    df_burden$mean_pop_wght_transfrm <- fact_f * df_burden$mean_ppp_weighted^fact_k
     # put back in list 
     data_files$df_burden = df_burden
 
