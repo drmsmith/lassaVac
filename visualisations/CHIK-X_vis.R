@@ -1,10 +1,16 @@
 library("tidyverse")
 library("ggplot2")
-library('sf')
-library('rgdal')
+library("sf")
+library("rgdal")
 library("rnaturalearth")
 library("rnaturalearthdata")
-library('conflicted')
+library("conflicted")
+library("countrycode")
+library("ggtextures")
+library("ggpattern")
+library("grid")
+library("magick", quietly = T, warn.conflicts = F)
+
 conflicts_prefer(
     dplyr::select(),
     dplyr::filter(),
@@ -13,20 +19,22 @@ conflicts_prefer(
 
 
 source('visualisations/utils_vis.R')
+load("figs/map_ws.RData")
 
 # CHIK-X simulation results and summaries 
 # df_all_sims_long <- read.csv("res/import_model_sim_res_x100.csv")
 # df_results_summary <- read.csv('res/import_model_sim_summary_x100.csv')
 # df_full_summary <- read.csv('res/import_model_100_sim_full_summary.csv')
 
+main_dir <- 'res/baseline_inc_0.7_noise_0.1'
 
-df_results_summary <- read.csv('res/baseline/sim_summary.csv')
-df_full_summary <- read.csv('res/baseline/sim_full_summary.csv')
+df_results_summary <- readRDS(file.path(main_dir, 'sim_summary.RDS'))
+df_full_summary <- readRDS(file.path(main_dir, 'sim_full_summary.RDS'))
 
 # helper files
-df_burden = read.csv('data/2019ppp_pd_df_suit_means_who_p_spillover.csv') 
+df_burden = read.csv('data/2019ppp_df_suit_means_pop_wght_pop_size_who_p_spillover.csv') 
 
-df_burden$annual_incidence <- df_burden$annual_incidence*9
+df_burden$annual_incidence <- df_burden$annual_incidence*0.7
 
 # helper files
 # df_burden = read.csv('data/df_suit_means_pop_wght_pop_size_who_p_spillover.csv') 
@@ -39,45 +47,7 @@ df_burden$annual_incidence <- df_burden$annual_incidence*9
 # add 0 for country not being in 
 # and NA for no travel info 
 
-
-## population size
-v_pop_files <- list.files("data/2020_UNadj_worldpop_data", pattern = ".tif") %>%
-    str_remove("_2020.tif") %>%
-    toupper()
-## gadm shape files
-v_shape_files <- list.files("data/gadm", pattern = ".rds") %>%
-    str_remove("gadm41_") %>%
-    str_remove("_0_pk.rds") %>%
-    toupper()
-## mobility
-mat_mob_daily_trips <- read.csv("data/df_mat_mob_n_daily_trips.csv")
-v_mobil_data <- colnames(mat_mob_daily_trips) 
-v_burden_codes <- unique(df_burden$code)
-length(v_shape_files)   # 233
-length(v_pop_files)     # 220 
-length(v_burden_codes)  # 194 # 183
-length(v_mobil_data)    # 188
-
-countrycode::countrycode(setdiff(v_burden_codes, v_mobil_data), 'iso3c', 'country.name')
-
-countrycode::countrycode(v_mobil_data[!(v_mobil_data %in% v_burden_codes)], 'iso3c', 'country.name')
-countrycode::countrycode(v_burden_codes[!(v_burden_codes %in% v_mobil_data)], 'iso3c', 'country.name')
-v_mobil_data[v_mobil_data %in% setdiff(v_burden_codes, v_mobil_data)]
-v_burden_codes[v_burden_codes %in% setdiff(v_burden_codes, v_mobil_data)]
-
-ls_all_codes = list(v_shape_files, v_pop_files, v_burden_codes, v_mobil_data)
-v_shape_pop_burden_mobil = Reduce(intersect, ls_all_codes)
-length(v_shape_pop_burden_mobil)    # 184 # 179
-
-# NAs to be added to the following shape files for lack of population or travel information 
-v_nas = setdiff(v_shape_files, v_shape_pop_burden_mobil)
-# only 8 of these are in df_who_regions
-# countrycode::countrycode(v_nas, 'iso3c', 'country.name') 
-# df_iso_regions %>% filter(str_detect(name, 'Taiwan'))
-
-# which suitability countries don't have travel info 
-# bind_rows(ls_burden_country_region) %>% filter(code %in% v_nas) %>% count(region_code) %>% as.vector
-
+world <- get_worldmap() # takes a minute and throws warnings 
 
 
 
@@ -98,7 +68,8 @@ v_nas = setdiff(v_shape_files, v_shape_pop_burden_mobil)
 
 # this gives how frequently a given country appears in the simulations 
 # p spillover and pop_size 
-percent_pop_size_spillover = df_full_summary %>%
+percent_pop_size_spillover = df_full_summary %>% 
+    group_by(country, code, region_name, region_code) %>%
     count(region_name, code) %>% # group_by(region_name)
     left_join(
         df_burden[,c('code', 'pop_size', 'p_spillover')], 
@@ -113,8 +84,8 @@ df_sum_stats <- df_full_summary %>%
     arrange(region_name, country) %>% # select(region_name, country, total_infections_all_years)
     mutate(
         country = factor(country, levels=unique(country)), 
-        per_100k = 1e5*total_infections_all_years/pop_size, 
-        per_100k_2yrs = 1e5*years_1_2/pop_size
+        per_100k = 1e5*total_infections_all_years/pop_size
+        # per_100k_2yrs = 1e5*years_1_2/pop_size
         ) %>%
     group_by(country, code, region_name, region_code) %>%
     summarise(
@@ -126,20 +97,20 @@ df_sum_stats <- df_full_summary %>%
         q3_cumul_infections = quantile(total_infections_all_years, 0.75),
         # iqr_cumul_infections = IQR(total_infections_all_years),
         # cumulative mean, median, IQR for first 2 years 
-        mean_cumul_infections_2yrs = mean(years_1_2),
-        median_cumul_infections_2yrs = median(years_1_2),
-        q1_cumul_infections_2yrs = quantile(years_1_2, 0.25),
-        q3_cumul_infections_2yrs = quantile(years_1_2, 0.75),
-        # total cumulative mean, median, IQR per 100k pop
+        # mean_cumul_infections_2yrs = mean(years_1_2),
+        # median_cumul_infections_2yrs = median(years_1_2),
+        # q1_cumul_infections_2yrs = quantile(years_1_2, 0.25),
+        # q3_cumul_infections_2yrs = quantile(years_1_2, 0.75),
+        # # total cumulative mean, median, IQR per 100k pop
         mean_cumul_infections_per100k = mean(per_100k),
         median_cumul_infections_per100k  = median(per_100k),
         q1_cumul_infections_per100k = quantile(per_100k, 0.25),
         q3_cumul_infections_per100k = quantile(per_100k, 0.75),
         # cumulative mean, median, IQR for first 2 years per 100k pop 
-        mean_cumul_infections_2yrs_per100k = mean(per_100k_2yrs),
-        median_cumul_infections_2yrs_per100k = median(per_100k_2yrs),
-        q1_cumul_infections_2yrs_per100k = quantile(per_100k_2yrs, 0.25),
-        q3_cumul_infections_2yrs_per100k = quantile(per_100k_2yrs, 0.75),
+        # mean_cumul_infections_2yrs_per100k = mean(per_100k_2yrs),
+        # median_cumul_infections_2yrs_per100k = median(per_100k_2yrs),
+        # q1_cumul_infections_2yrs_per100k = quantile(per_100k_2yrs, 0.25),
+        # q3_cumul_infections_2yrs_per100k = quantile(per_100k_2yrs, 0.75),
         .groups='keep'
     ) %>%      
     left_join(  # join with p_spillover, percent_sim, and ppp_size
@@ -147,11 +118,10 @@ df_sum_stats <- df_full_summary %>%
         ) %>%
     ungroup 
 
-
 # add 0 for v_shape_pop_burden_mobil
 # countries that are in simulations but do not have outbreaks 
 ##### this is particularly important for maps!!!
-v_add_zeros = setdiff(v_shape_pop_burden_mobil, df_sum_stats$code)
+v_add_zeros = setdiff(df_burden$code, df_sum_stats$code)
 
 df_zeros_NAs = df_burden %>% 
     filter(code %in% v_add_zeros) %>% 
@@ -181,7 +151,7 @@ apply(df_sum_stats_zeros_NAs, 2, max) %>%
 # use na.value = 'gray' in scale_color/fill 
 
 
-
+# save.image('figs/map_ws.RData')
 
 
 ##################################
@@ -194,18 +164,19 @@ cepi_prim_cols <- c(
 
 all_metrics <- c(
     "median_cumul_infections",
-    "median_cumul_infections_2yrs",
-    "median_cumul_infections_per100k",
-    "median_cumul_infections_2yrs_per100k"
+    "median_cumul_infections_per100k"
+    # "median_cumul_infections_2yrs",
+    # "median_cumul_infections_2yrs_per100k"
     )
 
 
 region_codes <- c("AFR", "AMR", "EMR", "EUR", "SEAR", "WPR")
 
 
+barplotdir <- "figs/barplots"
 walk(all_metrics, function(.curr_metric) {
     walk(region_codes, function(.reg_code) {
-        dest_dir = "figs/CEPI_pres/barplots"
+        dest_dir = barplotdir
         # dest_dir <- paste0(dest_dir, .reg_code, collapse = "")
         if (!dir.exists(dest_dir)) dir.create(dest_dir)
         # run plotting funcs
@@ -247,25 +218,25 @@ walk(all_metrics, function(.curr_metric) {
 df_by_region <- df_full_summary %>% group_by(region_code, region_name) %>% 
     mutate(
         region_code = factor(region_code, levels=unique(region_code)), 
-        per_100k = 1e5*total_infections_all_years/pop_size, 
-        per_100k_2yrs = 1e5*years_1_2/pop_size
+        per_100k = 1e5*total_infections_all_years/pop_size
+        # per_100k_2yrs = 1e5*years_1_2/pop_size
         ) %>% 
         summarise(
             median_per100k = 1e5*median(total_infections_all_years) / sum(pop_size),
             q1_per100k = 1e5*quantile(total_infections_all_years, 0.25) / sum(pop_size),
             q3_per100k = 1e5*quantile(total_infections_all_years, 0.75) / sum(pop_size),
             region_totals = median(total_infections_all_years),
-            region_totals_2yrs = median(years_1_2),
+            # region_totals_2yrs = median(years_1_2),
             region_totals_per100k = median(per_100k),
-            region_totals_per100k_2yrs = median(per_100k_2yrs),
+            # region_totals_per100k_2yrs = median(per_100k_2yrs),
             q1_region_totals = quantile(total_infections_all_years, 0.25),
             q3_region_totals = quantile(total_infections_all_years, 0.75),
-            q1_region_totals_2yrs = quantile(years_1_2, 0.25),
-            q3_region_totals_2yrs = quantile(years_1_2, 0.75),
+            # q1_region_totals_2yrs = quantile(years_1_2, 0.25),
+            # q3_region_totals_2yrs = quantile(years_1_2, 0.75),
             q1_region_totals_per100k = quantile(per_100k, 0.25),
             q3_region_totals_per100k = quantile(per_100k, 0.75),
-            q1_region_totals_per100k_2yrs = quantile(per_100k_2yrs, 0.25),
-            q3_region_totals_per100k_2yrs = quantile(per_100k_2yrs, 0.75),
+            # q1_region_totals_per100k_2yrs = quantile(per_100k_2yrs, 0.25),
+            # q3_region_totals_per100k_2yrs = quantile(per_100k_2yrs, 0.75),
             .groups='keep'
         ) 
 
@@ -287,8 +258,6 @@ guide_lab <- ifelse(
     "Infections per \n100,000 population",
     "Infections"
 )
-
-"base_name","base_col","light_1","light_2","dark_1","dark_2"
 
 light2 = c("#8ca8d4","#ffc354","#e78279","#bd5e8d","#9a6f94","#54aabf","#fbeaa5")
 
@@ -325,13 +294,21 @@ dest_filename <- paste0(
 # all regions bar plot # 
 ########################
 
-region_metrics <- c('region_totals', 'region_totals_2yrs','region_totals_per100k','region_totals_per100k_2yrs')
-dest_dir = "figs/CEPI_pres/barplots_region/"
+region_metrics <- c(
+    'region_totals', 'region_totals_per100k'
+    # 'region_totals_2yrs', 'region_totals_per100k_2yrs'
+    )
+dest_dir = "figs/barplots_region/"
 # dest_dir <- paste0(dest_dir, .reg_code, collapse = "")
 if (!dir.exists(dest_dir)) dir.create(dest_dir)
 walk(region_metrics, function(.curr_metric) {
     gg_metrics_barplot_region(.data=df_by_region, .metric = .curr_metric, .dest_dir = dest_dir)
 })
+
+
+
+
+
 
 
 
@@ -349,16 +326,9 @@ walk(region_metrics, function(.curr_metric) {
 # map: population size, p_spillover
 # map: % sim in which country is present  // spillover incidence 
 
-library('countrycode')
 
 # get world map data for plotting 
-world <- ne_countries(scale = "large", returnclass = "sf") %>% 
-    filter(!str_detect(admin, 'arctica')) 
-world <- world %>%
-    mutate(code = countrycode(world$name, 'country.name', 'iso3c'))
-# world <- world[, ]
-world$codecode[world$name=='USA'] = 'USA'
-
+world <- get_worldmap()
 
 wrld_joined_full <- left_join(
     world, df_sum_stats_zeros_NAs,
@@ -370,12 +340,12 @@ wrld_joined_full <- left_join(
 all_metrics <- c(
     "mean_cumul_infections",
     "median_cumul_infections",
-    "mean_cumul_infections_2yrs",
-    "median_cumul_infections_2yrs",
+    # "mean_cumul_infections_2yrs",
+    # "median_cumul_infections_2yrs",
     "mean_cumul_infections_per100k",
     "median_cumul_infections_per100k",
-    "mean_cumul_infections_2yrs_per100k",
-    "median_cumul_infections_2yrs_per100k", 
+    # "mean_cumul_infections_2yrs_per100k",
+    # "median_cumul_infections_2yrs_per100k", 
     "pop_size", 
     "p_spillover", 
     "percent_sims"
@@ -387,7 +357,7 @@ region_codes <- c("AFR", "AMR", "EMR", "EUR", "SEAR", "WPR")
 
 walk(all_metrics, function(.curr_metric) {
     walk(region_codes, function(.reg_code) {
-        dest_dir <- paste0("figs/CEPI_pres/maps_region/", .reg_code, collapse = "")
+        dest_dir <- paste0("figs/maps_region/", .reg_code, collapse = "")
         if (!dir.exists(dest_dir)) dir.create(dest_dir)
         # run plotting funcs
         gg_metrics_map(
@@ -410,29 +380,9 @@ wrld_joined_full <- left_join(
 ) # %>% filter(region_code == 'AFR')
 
 
-# colnames(df_sum_stats_zeros_NAs)
-# colnames(world) 
-
-# world$name 
-# world$abbrev
-# world$iso_a3 %>% sort
-# world$adm0_a3 %>% sort
-# world$brk_a3
-
-# world$iso_a3 %in% world$adm0_a3
-
-# name_to_code = countrycode::countrycode(world$name, 'country.name', 'iso3c')
-# name_to_code = name_to_code[!is.na(name_to_code)]
-
-# v_burden_codes[!v_burden_codes %in% name_to_code]
-# countrycode::countrycode(v_burden_codes[!v_burden_codes %in% name_to_code], 'iso3c', 'country.name')
-
-
-
-dest_dir <- "figs/CEPI_pres/maps_global"
+dest_dir <- "figs/maps_global"
 # dest_dir <- paste0(dest_dir, .reg_code, collapse = "")
 if (!dir.exists(dest_dir)) dir.create(dest_dir)
-
 
 
 walk(all_metrics, function(.curr_metric) {
@@ -447,24 +397,94 @@ walk(all_metrics, function(.curr_metric) {
 
 
 
-
 # get simulation outbreak course 
-
-#
-
-
 
 
 # 64 # 90 is amazing 
 # pick a simulation from n_spread 
+
+wrld_joined_full <- left_join(
+    world, df_sum_stats_zeros_NAs,
+    by = join_by(code == code) # adm0_a3  
+) # %>% filter(region_code == 'AFR')
+
+
 n_spread <- data.frame(unlist(table(df_results_summary$simulation)))
 colnames(n_spread) <- c("simulation", "n_countries")
 n_spread
 
-df_sim = df_full_summary %>% filter(simulation==90) %>% arrange(outbreak_start_day) %>%
+sim_no <- 94
+
+df_sim = df_full_summary %>% filter(simulation==sim_no) %>% arrange(outbreak_start_day) %>%
     mutate(
-        per_100k = 1e5*total_infections_all_years/pop_size, 
-        per_100k_2yrs = 1e5*years_1_2/pop_size
+        per_100k = 1e5*total_infections_all_years/pop_size#, 
+        # per_100k_2yrs = 1e5*years_1_2/pop_size
+    )
+
+
+dest_dir <- file.path("figs", "outbreak_progression")
+if (!dir.exists(dest_dir)) dir.create(dest_dir)
+
+# walk(1:nrow(df_sim), function(.sim_index) {
+#     ccodes_filter <- df_sim$code[1:.sim_index]
+#     start_day <- df_sim$outbreak_start_day[.sim_index]
+#     grob <- grobTree(
+#         textGrob(
+#             paste("Outbreak start day: ", start_day, sep=''), x=0.05,  y=0.1, hjust=0,
+#             gp=gpar(col="black", fontsize=15, fontface="bold")
+#             ))
+
+#     gg_map_outbreak_progress(
+#         .wrld_joined_full=wrld_joined_full,
+#         .wrld_joined_nas=wrld_joined_nas, 
+#         .metric='per_100k', #years_1_2
+#         .filter_codes=ccodes_filter,
+#         .grob=grob,
+#         .start_day=start_day,
+#         .dest_dir = dest_dir
+#     )
+# }, .progress = T)
+
+
+
+
+library("tidyverse")
+library("ggplot2")
+library("sf")
+library("rgdal")
+library("rnaturalearth")
+library("rnaturalearthdata")
+library("conflicted")
+library("countrycode")
+library("ggtextures")
+library("ggpattern")
+library("grid")
+library("magick", quietly = T, warn.conflicts = F)
+
+conflicts_prefer(
+    dplyr::select(),
+    dplyr::filter(),
+    .quiet = T
+)
+
+load("figs/map_ws.RData")
+source('visualisations/utils_vis.R')
+
+dest_dir <- file.path("figs", "outbreak_progression")
+if (!dir.exists(dest_dir)) dir.create(dest_dir)
+
+
+
+n_spread <- data.frame(unlist(table(df_results_summary$simulation)))
+colnames(n_spread) <- c("simulation", "n_countries")
+n_spread
+
+sim_no <- 94
+
+df_sim = df_full_summary %>% filter(simulation==sim_no) %>% arrange(outbreak_start_day) %>%
+    mutate(
+        per_100k = 1e5*total_infections_all_years/pop_size#, 
+        # per_100k_2yrs = 1e5*years_1_2/pop_size
     )
 
 wrld_joined_full <- left_join(
@@ -472,36 +492,88 @@ wrld_joined_full <- left_join(
     by = join_by(adm0_a3 == code)
 ) # %>% filter(region_code == 'AFR')
 
-library('grid')
-dest_dir <- "figs/outbreak_progression"
-if (!dir.exists(dest_dir)) dir.create(dest_dir)
 
-walk(1:nrow(df_sim), function(.sim_index) {
-    ccodes_filter <- df_sim$code[1:.sim_index]
-    start_day <- df_sim$outbreak_start_day[.sim_index]
-    grob <- grobTree(
-        textGrob(
-            paste("Outbreak start day: ", start_day, sep=''), x=0.05,  y=0.1, hjust=0,
-            gp=gpar(col="black", fontsize=15, fontface="bold")
-            ))
+wrld_joined_nas <- left_join(
+    world, df_burden,
+    by = join_by(adm0_a3 == code)
+) %>% filter(!complete.cases(pop_size))
 
-    gg_map_outbreak_progress(
-        .wrld_joined_full=wrld_joined_full,
-        .metric='per_100k_2yrs', #years_1_2
-        .filter_codes=ccodes_filter,
-        .grob=grob,
-        .start_day=start_day,
-        .dest_dir = dest_dir
-    )
-}, .progress = T)
+ccodes_filter <- df_sim$code
 
+
+start_day <- 999
+grob <- grobTree(
+    textGrob(
+        paste("Outbreak start day: ", start_day, sep=''), x=0.05,  y=0.1, hjust=0,
+        gp=gpar(col="black", fontsize=15, fontface="bold")
+        ))
+
+cepi_cols <- c("#547dbf", "#fbeaa5", "#db4437")
+guide_lab <- "Infections\nper 100,000"
+
+# get data set without current region
+wrld_fltrd <- filter(wrld_joined_full, !code %in% ccodes_filter)
+outbr_map <- ggplot(data = wrld_joined_full) +
+    geom_sf(aes(fill = per_100k), color = "darkgrey", linewidth = 0.2) +
+    geom_sf(
+        data = wrld_fltrd, fill = "gainsboro", color = NA 
+    ) +
+    scale_fill_gradientn(
+        colors = cepi_cols,
+        na.value = "gray25", # "lightgray",
+        name = guide_lab
+    ) +
+    geom_sf_pattern(
+        data=wrld_joined_nas, color = "darkgrey", 
+        linewidth = 0.2, 
+        pattern = 'stripe', pattern_density = 0.15, 
+        pattern_fill = 'gray33', pattern_colour = 'darkgrey', 
+        pattern_spacing = 0.01
+    ) + 
+    theme_light(base_size = 16) +
+    guides(color = "none") +
+    #     scale_color_manual(values = 'black') + #, na.value='white') +
+    coord_sf(expand=FALSE) + 
+    annotation_custom(grob)
+
+
+
+wrld_fltrd_outbreaks <- filter(wrld_joined_full, code %in% ccodes_filter)
+df_coords <- map(wrld_fltrd_outbreaks$geometry, st_centroid) %>%
+    map(~c(lon=.x[1], lat=.x[2])) %>% bind_rows
+
+start_point <- st_centroid(wrld_start$geometry)
+
+source_dest <- data.frame(
+    start = wrld_fltrd_outbreaks$code, 
+    dest = dplyr::lead(wrld_fltrd_outbreaks$code, 1)
+    ) %>% drop_na
+
+start_dest_coords <- cbind(
+    df_coords, 
+    lead(df_coords)
+) %>% drop_na
+names(start_dest_coords) <- c('start_lon', 'start_lat', 'dest_lon', 'dest_lat')
+
+df_start_dest_code_coords <- cbind(source_dest, start_dest_coords)
+
+
+# outbr_map <- gg_map_outbreak_progress(
+#     .wrld_joined_full=wrld_joined_full,
+#     .wrld_joined_nas=wrld_joined_nas, 
+#     .metric='per_100k', #years_1_2
+#     .filter_codes=ccodes_filter,
+#     .grob=grob,
+#     .start_day=start_day,
+#     .dest_dir = dest_dir
+#     )
+
+ 
 
 # source('model/utils.R')
 # all_filepaths = list.files(dest_dir, full.names = T)
 # gif_maker(all_filepaths, "outbreak_progression", dest_dir, .fps = 1)
 
-
-library('magick', quietly = T, warn.conflicts = F)
 
 gif_maker = function(
     vec_img_paths,  # vector of full paths to desired images in correct order
@@ -532,3 +604,63 @@ walk(region_codes, function(whoregion) {
 }, .progress = T)
 
 
+
+
+
+
+
+
+
+df_results_summary %>% count(simulation)
+
+
+df_start_dest_code_coords$curvature <- runif(
+    nrow(df_start_dest_code_coords), -0.2, 0.2
+    )
+
+
+annotations <- tibble(
+    arrow_from = paste(
+    df_start_dest_code_coords$start_lon, 
+    df_start_dest_code_coords$start_lat,
+    sep=', '
+    ),
+    arrow_to = paste(
+    df_start_dest_code_coords$dest_lon, 
+    df_start_dest_code_coords$dest_lat,
+    sep=', '
+    ),
+    curvature = runif(nrow(df_start_dest_code_coords), -0.2, 0.2)
+) %>%
+    separate(arrow_from, into = c("x", "y")) %>%
+    separate(arrow_to, into = c("xend", "yend")) 
+
+
+
+df_start_dest_code_coords %>% tibble %>%
+    pwalk(function(...) {
+        # collect all values in the row in a one-rowed data frame
+        current <- tibble(...)
+
+
+        # update the plot object with global assignment
+        outbr_map <<- outbr_map +
+            # for each annotation, add an arrow
+            geom_curve(
+                data = current,
+                aes(
+                    x = start_lon,
+                    xend = dest_lon,
+                    y = start_lat,
+                    yend = dest_lat
+                ),
+                # that's the whole point of doing this loop:
+                curvature = current %>% pull(curvature),
+                size = 0.2,
+                arrow = arrow(
+                    length = unit(0.005, "npc")
+                )
+            )
+    })
+
+outbr_map

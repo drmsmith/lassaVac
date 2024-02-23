@@ -1,3 +1,12 @@
+library("tidyverse")
+library("scales")
+library("ggthemes")
+library("sf")
+library("rgdal")
+library("rnaturalearth")
+library("rnaturalearthdata")
+library("countrycode")
+
 # map: mean cumulative infections for map 
 # map: mean per 100k pop across 100 sims 
 # map: population size, p_spillover
@@ -52,29 +61,35 @@ gg_metrics_barplot <- function(
         "Infections"
     )
 
-    .data %>%
+    .data_fltrd <- .data %>%
         filter(region_code == .region_code) %>%
         mutate(
             country = factor(country, levels = sort(unique(country)))
-        ) %>%
+        )
+    .data_fltrd %>%
         ggplot(aes(x = country, y = .data[[.metric]])) +
         geom_bar(stat = "identity", aes(fill = country)) +
         geom_errorbar(
             aes(x = country, ymin = .data[[ymin_lab]], ymax = .data[[ymax_lab]]),
             width = 0.4,
-            colour = "grey33",
-            alpha = 0.9, size = 1.3
+            colour = "grey10",
+            alpha = 0.9, linewidth = 1
         ) +
         scale_fill_manual(values = v_cols) +
+        scale_y_continuous(
+            labels = comma, 
+            limits = function(x) {c(0, 1.05*max(.data_fltrd[[ymax_lab]]))}
+            ) + 
         theme_light(base_size = 16) +
         theme(axis.text.x = element_text(angle = 75, hjust = 1)) +
         guides(fill = "none") +
-        labs(x = "", y = guide_lab)
+        labs(x = "", y = guide_lab) + 
+        coord_cartesian(expand=FALSE)
 
-    dest_filename <- paste0(
-        .dest_dir, "/", .region_code, "_", .metric, ".png",
-        collapse = ""
-    )
+    dest_filename <- file.path(
+        .dest_dir, 
+        paste0(.region_code, "_", .metric, ".png",collapse = "")
+        )
     ggsave(
         filename = dest_filename,
         width = 4500, height = 3000, units = "px",
@@ -108,19 +123,24 @@ gg_metrics_barplot_region <- function(
         geom_errorbar(
             aes(x = region_code, ymin = .data[[ymin_lab]], ymax = .data[[ymax_lab]]),
             width = 0.4,
-            colour = "grey33",
-            alpha = 0.9, size = 1.3
+            colour = "grey10",
+            alpha = 0.9, size = 1
         ) +
         scale_fill_manual(values = v_cols) +
+        scale_y_continuous(
+            labels = comma, 
+            limits = function(x) {c(0, 1.05*max(.data[[ymax_lab]]))}
+            ) + 
         theme_light(base_size = 16) +
         theme(axis.text.x = element_text(angle = 75, hjust = 1)) +
         guides(fill = "none") +
-        labs(x = "", y = guide_lab)
+        labs(x = "", y = guide_lab) + 
+        coord_cartesian(expand=FALSE)
 
-    dest_filename <- paste0(
-        .dest_dir, "/", "region_", .metric, ".png",
-        collapse = ""
-    )
+    dest_filename <- file.path(
+        .dest_dir, 
+        paste0("region_", .metric, ".png",collapse = "")
+        )
     ggsave(
         filename = dest_filename,
         width = 4500, height = 3000, units = "px",
@@ -164,7 +184,7 @@ gg_metrics_map <- function(
     .dest_dir = "figs/maps_by_region") {
     if (.metric == "pop_size") {
         cepi_cols <- c("#ffe3b0", "#b0d8e2", "#0080A0")
-        guide_lab <- "Population size\n(millions)"
+        guide_lab <- "Population size"
         ##### LOG TRANSFORMAION
         # guide_lab <- "Population size\n(log millions)"
         # .wrld_joined_full[,.metric] <- log(.wrld_joined_full[,.metric]) 
@@ -193,17 +213,25 @@ gg_metrics_map <- function(
 
     # get data set without current region
     wrld_fltrd <- filter(.wrld_joined_full, region_code != .region_code) # & (!is.na(region_code)))
+    wrld_na <- .wrld_joined_full %>% filter(!complete.cases(pop_size))
 
     ggplot(data = .wrld_joined_full) +
-        geom_sf(aes(fill = .data[[.metric]]), color = "darkgrey", size = 0.1) +
+        geom_sf(aes(fill = .data[[.metric]]), color = "darkgrey", linewidth = 0.5) +
         geom_sf(
             data = wrld_fltrd, fill = "lightgray", color = NA # , alpha=0.95
         ) +
         scale_fill_gradientn(
             colors = cepi_cols,
             na.value = "gray25", # "lightgray",
-            name = guide_lab
+            name = guide_lab, labels=comma
         ) +
+        geom_sf_pattern(
+            data=wrld_na, color = "darkgrey", 
+            linewidth = 0.5, 
+            pattern = 'stripe', pattern_density = 0.15, 
+            pattern_fill = 'gray33', pattern_colour = 'darkgrey', 
+            pattern_spacing = 0.01
+        ) + 
         theme_light(base_size = 16) +
         guides(color = "none") +
         #     scale_color_manual(values = 'black') + #, na.value='white') +
@@ -214,10 +242,10 @@ gg_metrics_map <- function(
             expand = FALSE
         )
 
-    dest_filename <- paste0(
-        .dest_dir, "/", .region_code, "_", .metric, ".png",
-        collapse = ""
-    )
+    dest_filename <- file.path(
+        .dest_dir, 
+        paste0(.region_code, "_", .metric, ".png",collapse = "")
+        )
     ggsave(
         filename = dest_filename,
         width = 6466, height = 4161, units = "px",
@@ -237,7 +265,7 @@ gg_metrics_map_global <- function(
     .dest_dir = "figs/global_maps") {
     if (.metric == "pop_size") {
         cepi_cols <- c("#ffe3b0", "#b0d8e2", "#0080A0")
-        guide_lab <- "Population size\n(millions)"
+        guide_lab <- "Population size"
         ##### LOG TRANSFORMAION
         # guide_lab <- "Population size\n(log millions)"
         # .wrld_joined_full[,.metric] <- log(.wrld_joined_full[,.metric]) 
@@ -262,23 +290,33 @@ gg_metrics_map_global <- function(
     } else {
         stop("Cannot plot non-existent metric\n")
     }
-
+    wrld_na <- .wrld_joined_full %>% filter(!complete.cases(pop_size))
     ggplot(data = .wrld_joined_full) +
-        geom_sf(aes(fill = .data[[.metric]]), color = "darkgrey", size = 0.1) +
+        geom_sf(aes(fill = .data[[.metric]]), color = "darkgrey", linewidth = 0.2) +
         scale_fill_gradientn(
             colors = cepi_cols,
             na.value = "gray25", # "lightgray",
-            name = guide_lab
+            name = guide_lab, labels=comma
         ) +
+        geom_sf_pattern(
+            data=wrld_na, color = "darkgrey", 
+            linewidth = 0.2, 
+            pattern = 'stripe', pattern_density = 0.15, 
+            pattern_fill = 'gray33', pattern_colour = 'darkgrey', 
+            pattern_spacing = 0.01
+            ) + 
         theme_light(base_size = 16) +
         guides(color = "none") +
         #     scale_color_manual(values = 'black') + #, na.value='white') +
-        coord_sf()
+        coord_sf(expand=FALSE) 
+        # scale_image_manual(
+        #     values = c("diagonals" = "hatching.svg"), name = NULL, labels = c("NA")
+        #     )
 
-    dest_filename <- paste0(
-        .dest_dir, "/", "global_", .metric, ".png",
-        collapse = ""
-    )
+    dest_filename <- file.path(
+        .dest_dir, 
+        paste0("global_", .metric, ".png",collapse = "")
+        )
     ggsave(
         filename = dest_filename,
         width = 6466, height = 4161, units = "px",
@@ -305,6 +343,7 @@ make_cepi_base_col_scheme_col_out <- function(.base_cols, .out) {
 
 gg_map_outbreak_progress <- function(
     .wrld_joined_full,
+    .wrld_joined_nas, 
     .metric,
     .filter_codes,
     .grob,
@@ -319,9 +358,8 @@ gg_map_outbreak_progress <- function(
 
     # get data set without current region
     wrld_fltrd <- filter(.wrld_joined_full, !code %in% .filter_codes)
-
-    ggplot(data = .wrld_joined_full) +
-        geom_sf(aes(fill = .data[[.metric]]), color = "darkgrey", size = 0.1) +
+    plt <- ggplot(data = .wrld_joined_full) +
+        geom_sf(aes(fill = .data[[.metric]]), color = "darkgrey", linewidth = 0.2) +
         geom_sf(
             data = wrld_fltrd, fill = "gainsboro", color = NA # , alpha=0.95 # fill #D3D3D3, #E8E9EB, azure3
         ) +
@@ -330,20 +368,91 @@ gg_map_outbreak_progress <- function(
             na.value = "gray25", # "lightgray",
             name = guide_lab
         ) +
+        geom_sf_pattern(
+            data=wrld_joined_nas, color = "darkgrey", 
+            linewidth = 0.2, 
+            pattern = 'stripe', pattern_density = 0.15, 
+            pattern_fill = 'gray33', pattern_colour = 'darkgrey', 
+            pattern_spacing = 0.01
+        ) + 
         theme_light(base_size = 16) +
         guides(color = "none") +
         #     scale_color_manual(values = 'black') + #, na.value='white') +
-        coord_sf() + 
+        coord_sf(expand=FALSE) + 
         annotation_custom(.grob)
 
-    dest_filename <- paste0(
-        .dest_dir, "/", "outbreak_start_", .start_day, ".png",
-        collapse = ""
-    )
-    ggsave(
-        filename = dest_filename,
-        width = 6e3, height = 25e2, units = "px",
-        dpi = 400,
-        bg = "transparent"
-    )
+    dest_filename <- file.path(
+        .dest_dir, 
+        paste0("outbreak_start_", .start_day, ".png",collapse = "")
+        )
+    # ggsave(
+    #     plt, 
+    #     filename = dest_filename,
+    #     width = 6e3, height = 25e2, units = "px",
+    #     dpi = 400,
+    #     bg = "transparent"
+    # )
+    return(plt)
+}
+
+
+
+get_worldmap <- function() {
+    # get world map data for plotting 
+    world <- ne_countries(scale = "large", returnclass = "sf") %>% 
+        filter(!str_detect(admin, 'arctica')) 
+    world <- world %>%
+        mutate(code = countrycode(world$name, 'country.name', 'iso3c'))
+    # world <- world[, ]
+    world$codecode[world$name=='USA'] = 'USA'
+    return(world)
+}
+
+gg_dest_map_global <- function(
+    .wrld_joined_full,
+    .wrld_start,
+    .start_point,
+    .wrld_joined_nas, 
+    .metric,
+    .save = T,
+    .dest_dir = main_dir,
+    .file_name = .metric) {
+
+    # cepi_cols <- c("#ffe3b0", "#e1b5ca", "#9d0f55")
+    # cepi_cols <- c("#ffe3b0", "#9d0f55", "#682860")
+    # cepi_cols <- c("#ffe3b0", "#9d0f55", "#8c5b00")
+    cepi_cols <- c("#ffe3b0",  "#e89600", "#bd5e8d", "#9d0f55")
+    guide_lab <- "Simulations\n(%)"
+
+    plt <- ggplot(data = .wrld_joined_full) +
+        geom_sf(aes(fill = .data[[.metric]]), color = "darkgrey", linewidth = 0.2) +
+        geom_sf(data=.wrld_start, fill = '#54aabf', color = "darkgrey", linewidth = 0.2, stroke=2) +
+        scale_fill_gradientn(
+            colors = cepi_cols,
+            na.value = "gray25", # "lightgray",
+            name = guide_lab
+        ) +
+        geom_sf(data=.start_point, size=1.5, shape=13) + 
+        geom_sf_pattern(
+            data=wrld_joined_nas, color = "darkgrey", 
+            linewidth = 0.2, 
+            pattern = 'stripe', pattern_density = 0.15, 
+            pattern_fill = 'gray33', pattern_colour = 'darkgrey', 
+            pattern_spacing = 0.01
+        ) + 
+        theme_light(base_size = 16) + # linedraw classic map minimal
+        guides(color = "none") + # labs(x='', y='') + 
+        #     scale_color_manual(values = 'black') + #, na.value='white') +
+        coord_sf(expand=FALSE) 
+
+    if (.save==T) {
+        ggsave(
+            filename = file.path(.dest_dir, .file_name),
+            width = 6466, height = 4161, units = "px",
+            dpi = 500,
+            bg = "transparent"
+        )
+    }
+
+    return(plt)
 }
