@@ -1,31 +1,40 @@
 library("tidyverse")
 library("ggplot2")
-library('cowplot')
+library("ggthemes")
+library("cowplot")
+library("sf")
+library("rgdal")
+library("rnaturalearth")
+library("rnaturalearthdata")
+library("countrycode")
 
 
 source('visualisations/utils_post_proc.R')
+source('visualisations/utils_vis.R')
 
-
+main_dir <- 'res/baseline_inc_0.7_noise_0.1'
 # CHIK-X simulation results and summaries 
-# df_all_sims_long <- read.csv("res/baseline/sim_res_long.csv")
-df_results_summary <- read.csv('res/EDA_scenarios/baseline_x9/sim_summary.csv')
-df_full_summary <- read.csv('res/EDA_scenarios/baseline_x9/sim_full_summary.csv')
+# df_all_sims_long <- readRDS("res/baseline_inc_17_noise_0.1/sim_res_long.RDS")
+df_results_summary <- readRDS(file.path(main_dir, 'sim_summary.RDS'))
+df_full_summary <- readRDS('res/baseline_inc_17_noise_0.1/sim_full_summary.RDS')
 
-df_burden = read.csv('data/2019ppp_pd_df_suit_means_who_p_spillover.csv') 
+df_burden = read.csv('data/2019ppp_df_suit_means_pop_wght_pop_size_who_p_spillover.csv') 
 mat_mob_daily_trips <- read.csv("data/df_mat_mob_n_daily_trips.csv")
 all_codes <- colnames(mat_mob_daily_trips)
 # ensure mobility data and suitability data are matched 
 df_burden <- filter(df_burden, code %in% all_codes) %>% drop_na()
+burden_codes <- df_burden$code
 
 # identify most commonly appearing starting countries 
 top_starting_countries <- df_results_summary %>% group_by(code, region_code, simulation) %>%
     filter(timing == 0)  %>% group_by(code,region_code) %>%
     count(code) %>% 
     arrange(desc(n)) %>% head(n=4)
+top_starting_countries
 
 # identify most commonly appearing destination countries 
 ## FROM STARTING COUNTRIES 
-df_dests <- map(top_starting_countries$code, function(.ccode) {
+ls_dests <- map(top_starting_countries$code, function(.ccode) {
     ind_start_sims  <- df_results_summary %>% 
         group_by(country, code, region_code, simulation) %>%
         filter(timing == 0 & code == .ccode) %>% ungroup %>%
@@ -33,7 +42,7 @@ df_dests <- map(top_starting_countries$code, function(.ccode) {
         
     df_dests <- df_results_summary %>% 
         group_by(country, code, region_code, simulation) %>%
-        filter((timing != 0) & (simulation %in% ind_start_sims)) %>% 
+        filter((simulation %in% ind_start_sims)) %>% # (timing != 0) &
         mutate(per100k = 1e5 * IncCumul_U_final / pop_size) %>% 
         group_by(country,code,region_code) %>%
         summarise(
@@ -50,25 +59,85 @@ df_dests <- map(top_starting_countries$code, function(.ccode) {
         arrange(desc(n))
     return(df_dests)
 
-}) %>% setNames(top_starting_countries$code) %>% bind_rows(.id='starting_country')
+})
 
-head(df_dests)
-
-
-df_results_summary %>% group_by(country, code, region_code, simulation) %>%
-    filter((timing != 0) & (simulation %in% ind_start_sims)) %>% 
-        group_by(country, code,region_code) %>%
-        count(code) %>% 
-        arrange(desc(n)) %>% 
-        mutate(perc_spread = 100*n / length(ind_start_sims)) %>%
-        print()
+# df_dests <- ls_dests %>% setNames(top_starting_countries$code) %>% bind_rows(.id='source_country')
 
 
-    as.vector(ind_start_sims[,1])
-    # group_by(country, code,region_code) %>%
-    # count(code) %>% 
-    # arrange(desc(n)) %>% 
-    # print(n=168)
+world <- get_worldmap() # takes a minute and throws warnings 
+
+wrld_joined_nas <- left_join(
+    world, df_burden,
+    by = join_by(adm0_a3 == code)
+) %>% filter(!complete.cases(pop_size))
+
+
+cepcols  <- read.csv('methods/misc/cepi_color_scheme.csv')
+cepcols[2,c(1,3,4,2,5,6)]
+
+source('visualisations/utils_post_proc.R')
+source('visualisations/utils_vis.R')
+
+dest_dir = "figs/start_dest"
+
+all_start_dest_maps <- map2(
+    top_starting_countries$code, ls_dests, 
+    function(.start_code, .df) {
+        # plot file name 
+        file_name <- paste0("global_start_dest_", .start_code, ".png", collapse = "")
+
+        # countries that are in simulations but do not have outbreaks 
+        ##### this is particularly important for maps!!!
+        v_add_zeros = setdiff(burden_codes, .df$code)
+        df_zeros_NAs = df_burden %>% 
+            filter(code %in% v_add_zeros) %>% 
+            # rename(country = country_name, ode = country_code) %>% 
+            select(country, code, region_name, region_code, pop_size, p_spillover) %>%
+            mutate(perc_spread = 0)
+
+        # complete summary for map plotting 
+        df_sum_stats_zeros_NAs = bind_rows(.df, df_zeros_NAs) # %>% ungroup %>%
+        # map by region
+        # ls_sum_stats <- df_sum_stats_zeros_NAs %>% group_by(region_code) %>% group_split()
+
+        # join this with map data for plotting 
+        wrld_joined_full <- left_join(
+            world, df_sum_stats_zeros_NAs,
+            by = join_by(code == code) # adm0_a3  
+        )
+        # get separate starting country data
+        wrld_start <- left_join(
+            world, data.frame(code=.start_code, perc_spread=1),
+            by = join_by(code == code)
+            ) %>% filter(code == .start_code)
+        # and centroid for mark 
+        start_point <- st_centroid(wrld_start$geometry)
+        
+        plt <- gg_dest_map_global(
+            wrld_joined_full, wrld_start, start_point,
+            wrld_joined_nas,
+            'perc_spread', .save=T, .dest_dir=dest_dir, .file_name=file_name
+            )
+        return(plt)
+}, .progress = T)
+
+
+
+
+# df_results_summary %>% group_by(country, code, region_code, simulation) %>%
+#     filter((timing != 0) & (simulation %in% ind_start_sims)) %>% 
+#         group_by(country, code,region_code) %>%
+#         count(code) %>% 
+#         arrange(desc(n)) %>% 
+#         mutate(perc_spread = 100*n / length(ind_start_sims)) %>%
+#         print()
+
+
+#     as.vector(ind_start_sims[,1])
+#     # group_by(country, code,region_code) %>%
+#     # count(code) %>% 
+#     # arrange(desc(n)) %>% 
+#     # print(n=168)
 
 
 # identify most commonly appearing destination countries 
