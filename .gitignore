@@ -1,6 +1,8 @@
 # some processing files either too large or irrelevant
 preprocessing/data/2015_UNadj_worlpop_data/*
-preprocessing/PAHO_curve_fitting/curves_man_adj
+preprocessing/data/suit_2016
+preprocessing/data/WPP*
+preprocessing/PAHO_data/curves_man_adj
 preprocessing/mobility_and_p_spillover/2015_*
 preprocessing/mobility_and_p_spillover/eda.R
 
@@ -20,8 +22,6 @@ data/gadm_merged_shp
 data/sf_region_summary_merged_with_warnings
 data/2020_UNadj_worldpop_data
 data/2019_UNadj_worldpop_data
-preprocessing/misc.R
-preprocessing/suitability/misc.R
 data/2019*
 data/df*
 data/world*
