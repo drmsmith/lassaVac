@@ -4,6 +4,7 @@ library("ggplot2")
 library("lubridate")
 library("popEpi")
 library("countrycode")
+library("ggh4x")
 conflicts_prefer(
     dplyr::filter(),
     dplyr::select(),
@@ -345,20 +346,55 @@ df_daily_cases_smooth <- df_paho_daily_cases %>%
 # write.csv(df_paho_daily_cases, 'data/df_paho_daily_cases_fltrd.csv', row.names=F)
 write.csv(df_daily_cases_smooth, 'data/df_paho_daily_cases_fltrd_lagged_smooth.csv', row.names=F)
 
+
+
+df_daily_cases_smooth <- read.csv('data/df_paho_daily_cases_fltrd_lagged_smooth.csv')
+
+df_daily_cases_smooth <- df_daily_cases_smooth %>% 
+    group_by(country, code) %>% 
+    mutate(date = row_number()/365.25) %>%
+    print(n=10)
+
+cepi_prim_cols <- c(
+    "#547dbf", "#ffa500", "#db4437", "#9d0f55", "#682860", "#0080A0", "#F9DF79"
+)
+nclrs <- length(unique(df_daily_cases_smooth$country))
+v_cols <- sample(colorRampPalette(cepi_prim_cols)(nclrs), nclrs)
+
 # plot daily cases 
-ggplot(df_daily_cases_smooth, aes(x=decimal_date(date), y=daily_cases)) +
+ppaho_plt <- ggplot(df_daily_cases_smooth, aes(x=date, y=daily_cases)) +
     geom_point(aes(col = country), size = 0.3) +
     geom_line(aes(col = country), linewidth=0.5) +
     # geom_histogram(aes(fill = country)) +
     facet_wrap(vars(code), scales = "free_y") + # country or code
+    scale_color_manual(values = v_cols) +
     theme_light() +
     theme(legend.position = "none") + 
-    labs(x='Date', y='Daily cases')
+    labs(x='Time (years)', y='Daily cases') + 
+    coord_cartesian(expand=FALSE)
 
-ggsave(
+
+df_ylims <- map(ggplot_build(ppaho_plt)$layout$panel_params, ~data.frame(ymin=0, ymax=.x$y.range[2])) %>% bind_rows
+
+
+position_scales <- pmap(df_ylims, function(ymin, ymax) {
+    return(scale_y_continuous(labels = comma, limits = c(ymin, ymax*1.1)))
+})
+
+ppaho_plt <- ppaho_plt + facetted_pos_scales(y = position_scales)
+
+
+
+
+ggsave(ppaho_plt,
     # filename = 'figs/paho_cases_daily.png', dpi=330, bg='transparent',
     # filename = 'figs/paho_cases_daily_LAG.png', dpi=330, bg='transparent',
-    filename = 'figs/paho_cases_daily_roll30.png', dpi=330, bg='transparent',
+    # filename = 'figs/paho_cases_daily_roll30.png', dpi=330, bg='transparent',
+    filename = 'figs/paho_cases_daily_smoothed.png', dpi=330, bg='transparent', 
     width = 10, height = 7, units = 'in'
 )
 
+ggsave(ppaho_plt,
+    filename = 'figs/paho_cases_daily_smoothed.svg', dpi=330, bg='transparent', 
+    width = 10, height = 7, units = 'in'
+)
