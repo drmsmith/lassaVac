@@ -242,6 +242,7 @@ gg_metrics_map <- function(
     .wrld_joined_full,
     .region_code,
     .metric,
+    .file_extension='.png',
     .dest_dir = "figs/maps_by_region") {
     if (.metric == "pop_size") {
         cepi_cols <- c("#ffe3b0", "#b0d8e2", "#0080A0")
@@ -305,7 +306,7 @@ gg_metrics_map <- function(
 
     dest_filename <- file.path(
         .dest_dir, 
-        paste0(.region_code, "_", .metric, ".png",collapse = "")
+        paste0(.region_code, "_", .metric, .file_extension ,collapse = "")
         )
     ggsave(
         filename = dest_filename,
@@ -323,6 +324,7 @@ gg_metrics_map <- function(
 gg_metrics_map_global <- function(
     .wrld_joined_full,
     .metric,
+    .file_extension = '.png',
     .dest_dir = "figs/global_maps") {
     if (.metric == "pop_size") {
         cepi_cols <- c("#ffe3b0", "#b0d8e2", "#0080A0")
@@ -368,15 +370,11 @@ gg_metrics_map_global <- function(
             ) + 
         theme_light(base_size = 16) +
         guides(color = "none") +
-        #     scale_color_manual(values = 'black') + #, na.value='white') +
         coord_sf(expand=FALSE) 
-        # scale_image_manual(
-        #     values = c("diagonals" = "hatching.svg"), name = NULL, labels = c("NA")
-        #     )
 
     dest_filename <- file.path(
         .dest_dir, 
-        paste0("global_", .metric, ".png",collapse = "")
+        paste0("global_", .metric, .file_extension, collapse = "")
         )
     ggsave(
         filename = dest_filename,
