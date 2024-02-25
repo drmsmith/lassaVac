@@ -2,8 +2,8 @@ library("tidyverse")
 library("ggplot2")
 library('cowplot')
 
-source('visualisations/utils_post_proc.R')
-source('visualisations/utils_ks_test.R')
+source('utils/utils_post_proc.R')
+source('utils/utils_ks_test.R')
 
 
 ## summarise and plot scenario

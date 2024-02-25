@@ -11,7 +11,7 @@ library('foreach')
 library('progress')
 
 
-source('model/utils.R')
+source('utils/utils_model.R')
 
 
 
@@ -250,7 +250,7 @@ f_sim_loop_parallel <- function(n_simulations, data_files, sim_hyperparams) {
     cl <- parallel::makeCluster(8, type='PSOCK')
     registerDoParallel(cl)
     clusterEvalQ(cl,  library('tidyverse'))
-    clusterEvalQ(cl,  source('model/utils.R'))
+    clusterEvalQ(cl,  source('utils/utils_model.R'))
     clusterEvalQ(cl,  source('model/CHIK-X_sim.R'))
     # clusterEvalQ(cl, set.seed(31124))
 

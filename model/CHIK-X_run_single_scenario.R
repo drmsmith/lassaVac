@@ -25,7 +25,7 @@
 
 
 # utility funcs
-source('model/utils.R')
+source('utils/utils_model.R')
 # modelling daily infections / sampling curve shapes
 source('model/CHIK-X_sim_funcs.R')
 

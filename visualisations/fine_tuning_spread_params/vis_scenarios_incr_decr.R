@@ -3,8 +3,8 @@ library("ggplot2")
 library('cowplot')
 
 
-source('visualisations/utils_post_proc.R')
-source('visualisations/utils_ks_test.R')
+source('utils/utils_post_proc.R')
+source('utils/utils_ks_test.R')
 
 
 
@@ -64,10 +64,6 @@ df_all_scenarios_full_summary <- map2(resdirs, ids, function(.res_dir, .id) {
 ##################
 # zika rate tune #
 ##################
-
-colnames(df_all_scenarios_full_summary)
-
-source('visualisations/utils_post_proc.R')
 
 scenario_rate_plot <- make_scenario_rate_plot(df_all_scenarios_full_summary, ncols=plt_ncols) 
 scenario_rate_plot

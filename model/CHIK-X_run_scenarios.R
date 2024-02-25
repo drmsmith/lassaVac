@@ -10,7 +10,7 @@ library('foreach')
 library('progress')
 
 
-source('visualisations/utils_post_proc.R')
+source('utils/utils_post_proc.R')
 
 # incidence_factors <- c(1,10) # 1:10 
 # suit_factors <- c(0.9, 0.7, 0.5)
@@ -33,7 +33,7 @@ walk(size_noise, function(.noise_factor) {
     # set.seed(10224) # for 1000 simulations  
 
     # utility funcs
-    source('model/utils.R')
+    source('utils/utils_model.R')
     # modelling daily infections / sampling curve shapes
     source('model/CHIK-X_sim_funcs.R')
 

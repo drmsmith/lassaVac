@@ -18,9 +18,9 @@ conflicts_prefer(
     .quiet = T
 )
 
-source('visualisations/utils_vis.R')
-source("visualisations/utils_ks_test.R")
-source("visualisations/utils_post_proc.R")
+source('utils/utils_vis.R')
+source("utils/utils_ks_test.R")
+source("utils/utils_post_proc.R")
 
 main_dir <- 'res/baseline_inc_0.7_noise_0.1'
 incidence_factor <- 0.7

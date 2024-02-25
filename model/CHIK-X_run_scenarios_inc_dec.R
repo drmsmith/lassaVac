@@ -10,7 +10,7 @@ library('foreach')
 library('progress')
 
 
-source('visualisations/utils_post_proc.R')
+source('utils/utils_post_proc.R')
 
 
 # NO NOISE IN THE OUTBREAK SIZE 
@@ -26,7 +26,7 @@ walk(props, function(.prop_boost) {
     # set.seed(10224) # for 1000 simulations  
 
     # utility funcs
-    source('model/utils.R')
+    source('utils/utils_model.R')
     # modelling daily infections / sampling curve shapes
     source('model/CHIK-X_sim_funcs.R')
 
@@ -166,7 +166,7 @@ walk(props, function(.prop_boost) {
     # set.seed(10224) # for 1000 simulations  
 
     # utility funcs
-    source('model/utils.R')
+    source('utils/utils_model.R')
     # modelling daily infections / sampling curve shapes
     source('model/CHIK-X_sim_funcs.R')
 

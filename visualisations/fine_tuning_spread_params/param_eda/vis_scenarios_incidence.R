@@ -2,8 +2,8 @@ library("tidyverse")
 library("ggplot2")
 library('cowplot')
 
-source('visualisations/utils_post_proc.R')
-source('visualisations/utils_ks_test.R')
+source('utils/utils_post_proc.R')
+source('utils/utils_ks_test.R')
 
 
 ## summarise and plot scenario
@@ -49,9 +49,6 @@ filepaths = list.files(main_dir, pattern='sim_full_summary.csv', full.names = T,
 
 ids = dir(main_dir, pattern = scenario_id) %>%
     str_sort(numeric=T) %>% str_replace('_', ' ')
-
-source('visualisations/utils_post_proc.R')
-source('visualisations/utils_ks_test.R')
 
 
 df_all_scenarios_full_summary <- map2(filepaths, ids, function(.fpath, .id) {

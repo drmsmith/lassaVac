@@ -4,8 +4,8 @@ library("ggplot2")
 library('cowplot')
 
 
-source('visualisations/utils_post_proc.R')
-source('visualisations/utils_ks_test.R')
+source('utils/utils_post_proc.R')
+source('utils/utils_ks_test.R')
 
 df_results_summary <- read.csv('res/EDA_scenarios/baseline_x9/sim_summary.csv')
 df_full_summary <- read.csv('res/EDA_scenarios/baseline_x9/sim_full_summary.csv')

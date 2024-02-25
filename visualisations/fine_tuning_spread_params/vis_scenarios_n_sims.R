@@ -3,7 +3,7 @@ library("ggplot2")
 library('cowplot')
 
 
-source('visualisations/utils_post_proc.R')
+source('utils/utils_post_proc.R')
 
 ## summarise and plot scenario
 main_dir <- "res/scenarios_1000_sims/1000_sim_10224" 

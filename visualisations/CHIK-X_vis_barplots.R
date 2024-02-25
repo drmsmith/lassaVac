@@ -7,7 +7,7 @@ conflicts_prefer(
 )
 
 
-source('visualisations/utils_vis.R')
+source('utils/utils_vis.R')
 
 main_dir <- 'res/baseline_inc_0.7_noise_0.1'
 incidence_factor <- 0.7
