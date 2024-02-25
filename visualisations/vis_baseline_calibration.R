@@ -12,7 +12,7 @@ source('visualisations/utils_ks_test.R')
 main_dir <- "res/inc_0.1-9_noise_0.1_x100" 
 scenario_id <- "baseline" # file names follow this 
 pltname = 'baseline_calibration_spread_pahoadj.png'
-plt_ncols = 5
+plt_ncols = 3
 ### str_replace('_', ' ') for simulation_id
 ### figsize width=3300, height=1800,
 
@@ -55,7 +55,8 @@ filepaths = list.files(main_dir, pattern='sim_full_summary.RDS', full.names = T,
 
 ids = dir(main_dir, pattern = scenario_id) %>%
     str_sort(numeric=T) %>% # .[str_detect(., '0.2')] %>% 
-    str_replace_all('_inc_', 'inc x') %>%
+    str_replace_all('_inc_', 'incidence x') %>%
+    str_replace_all('noise', '\nnoise ') %>%
     str_replace_all('_', ' ') %>% 
     str_remove_all('baseline') 
 # ids <- ids[c(3,1,2)]
@@ -87,8 +88,12 @@ scenario_rate_plot
 
 # save 
 ggsave(scenario_rate_plot, # rate_tune_plot
-    filename=file.path(main_dir, 'figs',pltname), dpi=330, 
-    width=3300, height=2000, units='px')
+    filename=file.path('figs',pltname), dpi=330, 
+    width=3400, height=3000, units='px')
+
+ggsave(scenario_rate_plot,
+    filename=file.path('figs',str_replace(pltname, 'png', 'svg')), dpi=330, 
+    width=3400, height=3000, units='px')
 
 
 ###########################
@@ -188,13 +193,13 @@ incid_scen_n_by_100 <- ggplot(
     aes(x = cumul_nspread)
     ) +
     facet_wrap(~scenario_id, ncol=plt_ncols) + 
-    geom_histogram(binwidth=1, fill="#e89600") +
+    geom_histogram(binwidth=1, fill="#007492", boundary = 0.5) +
     labs(
         x = "Number of countries experiencing\noutbreaks by day 100", 
         y = "Count"
     ) +
     theme_light(base_size = 12) +
-    xlim(-1,15)
+    xlim(0.5,8)
 
 
 
@@ -213,22 +218,25 @@ incid_scen_n_by_160 <- ggplot(
     aes(x = cumul_nspread)
     ) +
     facet_wrap(~scenario_id, ncol=plt_ncols) + 
-    geom_histogram(binwidth=1, fill="#007492") +
+    geom_histogram(binwidth=1, fill="#e89600", boundary = 0.5) +
     labs(
         x = "Number of countries experiencing\noutbreaks by day 160", 
         y = "Count"
     ) +
-    theme_light(base_size = 12) + xlim(-1,15)
-
+    theme_light(base_size = 12) + xlim(0.5,8)
 
 
 
 plts = plot_grid(incid_scen_n_by_100,incid_scen_n_by_160, labels = "AUTO", ncol=1) 
 plts
-ggsave(plts,
-    filename=file.path(main_dir, 'figs', 'hists_100_160_incidence.png'), dpi=330, 
-    width=3500, height=2400, units='px')
 
+ggsave(plts,
+    filename=file.path('figs', 'hists_100_160_incidence.png'), dpi=330, 
+    width=2500, height=3000, units='px')
+
+ggsave(plts,
+    filename=file.path('figs', 'hists_100_160_incidence.svg'), dpi=330, 
+    width=2500, height=3000, units='px')
 
 
 ######################
