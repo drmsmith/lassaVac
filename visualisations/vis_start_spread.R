@@ -9,27 +9,40 @@ library("rnaturalearthdata")
 library("countrycode")
 
 
-source('visualisations/utils_post_proc.R')
 source('visualisations/utils_vis.R')
+source("visualisations/utils_ks_test.R")
+source("visualisations/utils_post_proc.R")
 
 main_dir <- 'res/baseline_inc_0.7_noise_0.1'
-# CHIK-X simulation results and summaries 
-# df_all_sims_long <- readRDS("res/baseline_inc_17_noise_0.1/sim_res_long.RDS")
-df_results_summary <- readRDS(file.path(main_dir, 'sim_summary.RDS'))
-df_full_summary <- readRDS('res/baseline_inc_17_noise_0.1/sim_full_summary.RDS')
+incidence_factor <- 0.7
+dest_dir <- file.path('figs','baseline_zika_and_hists')
 
+df_all_sims_long <- readRDS(file.path(main_dir, "sim_res_long.RDS"))
+df_results_summary <- readRDS(file.path(main_dir, 'sim_summary.RDS'))
+df_full_summary <- readRDS(file.path(main_dir, 'sim_full_summary.RDS'))
+
+# helper files
 df_burden = read.csv('data/2019ppp_df_suit_means_pop_wght_pop_size_who_p_spillover.csv') 
+df_burden$annual_incidence <- df_burden$annual_incidence*incidence_factor
 mat_mob_daily_trips <- read.csv("data/df_mat_mob_n_daily_trips.csv")
 all_codes <- colnames(mat_mob_daily_trips)
+
 # ensure mobility data and suitability data are matched 
 df_burden <- filter(df_burden, code %in% all_codes) %>% drop_na()
 burden_codes <- df_burden$code
 
+# get world map for plotting 
+world <- get_worldmap() # takes a minute and throws warnings 
+
+
+
 # identify most commonly appearing starting countries 
+n_countries <- 4
+
 top_starting_countries <- df_results_summary %>% group_by(code, region_code, simulation) %>%
     filter(timing == 0)  %>% group_by(code,region_code) %>%
     count(code) %>% 
-    arrange(desc(n)) %>% head(n=4)
+    arrange(desc(n)) %>% head(n=n_countries)
 top_starting_countries
 
 # identify most commonly appearing destination countries 
@@ -64,83 +77,74 @@ ls_dests <- map(top_starting_countries$code, function(.ccode) {
 # df_dests <- ls_dests %>% setNames(top_starting_countries$code) %>% bind_rows(.id='source_country')
 
 
-world <- get_worldmap() # takes a minute and throws warnings 
-
+# add NAs for plotting 
 wrld_joined_nas <- left_join(
     world, df_burden,
     by = join_by(adm0_a3 == code)
 ) %>% filter(!complete.cases(pop_size))
 
 
-cepcols  <- read.csv('methods/misc/cepi_color_scheme.csv')
-cepcols[2,c(1,3,4,2,5,6)]
+#####################
+# PLOT START - DEST # 
+#####################
 
-source('visualisations/utils_post_proc.R')
-source('visualisations/utils_vis.R')
+dest_dirs <- c("figs/start_dest", "figs/start_dest/svg")
+file_exts <- c(".png", ".svg")
 
-dest_dir = "figs/start_dest"
+pngs_and_svg_maps <- map2(file_exts, dest_dirs, function(.file_ext, .savedir) {
+    if (!dir.exists(.savedir)) dir.create(.savedir, recursive = TRUE)
+    all_start_dest_maps <- map2(
+        top_starting_countries$code, ls_dests, 
+        function(.start_code, .df) {
+            # plot file name 
+            file_name <- paste0("global_start_dest_", .start_code, .file_ext, collapse = "")
 
-all_start_dest_maps <- map2(
-    top_starting_countries$code, ls_dests, 
-    function(.start_code, .df) {
-        # plot file name 
-        file_name <- paste0("global_start_dest_", .start_code, ".png", collapse = "")
+            # countries that are in simulations but do not have outbreaks 
+            ##### this is particularly important for maps!!!
+            v_add_zeros = setdiff(burden_codes, .df$code)
+            df_zeros_NAs = df_burden %>% 
+                filter(code %in% v_add_zeros) %>% 
+                select(country, code, region_name, region_code, pop_size, p_spillover) %>%
+                mutate(perc_spread = 0)
 
-        # countries that are in simulations but do not have outbreaks 
-        ##### this is particularly important for maps!!!
-        v_add_zeros = setdiff(burden_codes, .df$code)
-        df_zeros_NAs = df_burden %>% 
-            filter(code %in% v_add_zeros) %>% 
-            # rename(country = country_name, ode = country_code) %>% 
-            select(country, code, region_name, region_code, pop_size, p_spillover) %>%
-            mutate(perc_spread = 0)
+            # complete summary for map plotting 
+            df_sum_stats_zeros_NAs = bind_rows(.df, df_zeros_NAs)
 
-        # complete summary for map plotting 
-        df_sum_stats_zeros_NAs = bind_rows(.df, df_zeros_NAs) # %>% ungroup %>%
-        # map by region
-        # ls_sum_stats <- df_sum_stats_zeros_NAs %>% group_by(region_code) %>% group_split()
-
-        # join this with map data for plotting 
-        wrld_joined_full <- left_join(
-            world, df_sum_stats_zeros_NAs,
-            by = join_by(code == code) # adm0_a3  
-        )
-        # get separate starting country data
-        wrld_start <- left_join(
-            world, data.frame(code=.start_code, perc_spread=1),
-            by = join_by(code == code)
-            ) %>% filter(code == .start_code)
-        # and centroid for mark 
-        start_point <- st_centroid(wrld_start$geometry)
-        
-        plt <- gg_dest_map_global(
-            wrld_joined_full, wrld_start, start_point,
-            wrld_joined_nas,
-            'perc_spread', .save=T, .dest_dir=dest_dir, .file_name=file_name
+            # join this with map data for plotting 
+            wrld_joined_full <- left_join(
+                world, df_sum_stats_zeros_NAs,
+                by = join_by(code == code) # adm0_a3  
             )
-        return(plt)
-}, .progress = T)
+            # get separate starting country data
+            wrld_start <- left_join(
+                world, data.frame(code=.start_code, perc_spread=1),
+                by = join_by(code == code)
+                ) %>% filter(code == .start_code)
+            # and centroid for mark 
+            start_point <- st_centroid(wrld_start$geometry)
+            # plot and save 
+            plt <- gg_dest_map_global(
+                wrld_joined_full, wrld_start, start_point, wrld_joined_nas,
+                'perc_spread', .save=T, .dest_dir=.savedir, .file_name=file_name
+                )
+            return(plt)
+    }, .progress = T)
+    return(all_start_dest_maps)
+}) # %>% setNames(str_replace_all(file_exts, '\\.', ''))
 
 
 
 
-# df_results_summary %>% group_by(country, code, region_code, simulation) %>%
-#     filter((timing != 0) & (simulation %in% ind_start_sims)) %>% 
-#         group_by(country, code,region_code) %>%
-#         count(code) %>% 
-#         arrange(desc(n)) %>% 
-#         mutate(perc_spread = 100*n / length(ind_start_sims)) %>%
-#         print()
 
 
-#     as.vector(ind_start_sims[,1])
-#     # group_by(country, code,region_code) %>%
-#     # count(code) %>% 
-#     # arrange(desc(n)) %>% 
-#     # print(n=168)
 
+
+###########################
+# vague destination stats #
+###########################
 
 # identify most commonly appearing destination countries 
+# excluding starting country and independent of it 
 df_results_summary %>% group_by(country, code, region_code, simulation) %>%
     filter(timing != 0)  %>% group_by(country, code,region_code) %>%
     count(code) %>% 
@@ -161,9 +165,9 @@ df_results_summary %>%
     count(region_code) %>% 
     arrange(desc(n))
 
+
 # identify most commonly appearing destination regions 
 #### use df burden for region country counts 
-# identify most commonly appearing destination regions 
 df_results_summary %>%
     filter(timing != 0)  %>% group_by(region_code) %>%
     select(code, region_code) %>%
@@ -185,27 +189,19 @@ df_results_summary %>%
 colnames(df_results_summary)
 df_results_summary %>% group_by(code, region_code, simulation) %>%
     filter(timing == 0) %>% group_by(code) %>%
-    # count(code) %>% 
     mutate(n=n()) %>% ungroup %>%
     mutate(proportion = 100*prop.table(IncCumul_U_final)) %>%
     select(code, region_code, n, proportion) %>%
     distinct(code, .keep_all=TRUE) %>% 
     arrange(desc(n)) # %>% head(n=5)
 
-df_results_summary %>% 
-    filter(code == 'IND') %>% summarise(sum(IncCumul_U_final))
 
 df_results_summary %>% group_by(simulation) %>% 
-    # transmute(perc = (100*IncCumul_U_final / sum(IncCumul_U_final))) %>%
     add_count(country) %>%
     mutate(cumul_nspread = cumsum(n)) %>%
     mutate(perc = (100*IncCumul_U_final / sum(IncCumul_U_final))) %>%
     select(code, region_code, perc, cumul_nspread) %>% filter(perc==last(perc)) %>%
-    arrange(desc(cumul_nspread))# arrange(desc(perc))
-    # # filter(IncCumul_U_final == max(IncCumul_U_final)) %>%
-    # select(code, region_code, perc) %>%
-    # arrange(desc(perc))
-
+    arrange(desc(cumul_nspread))
 
 
 
@@ -226,9 +222,3 @@ df_results_summary %>%
     group_by(code, region_code) %>% summarise(perc = sum(perc)) %>%
     arrange(desc(perc))
 
-
-
-# save 
-ggsave(scenario_rate_plot,
-    filename=file.path('figs',pltname), dpi=330, 
-    width=3300, height=1400, units='px')
