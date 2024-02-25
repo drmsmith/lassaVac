@@ -1,17 +1,5 @@
 library("tidyverse")
 library("ggplot2")
-library("sf")
-library("rgdal")
-library("rnaturalearth")
-library("rnaturalearthdata")
-library("conflicted")
-library("countrycode")
-library("ggtextures")
-library("ggpattern")
-library("grid")
-library("ggh4x")
-library("magick", quietly = T, warn.conflicts = F)
-
 conflicts_prefer(
     dplyr::select(),
     dplyr::filter(),
