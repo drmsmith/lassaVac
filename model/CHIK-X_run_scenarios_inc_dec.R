@@ -28,7 +28,7 @@ walk(props, function(.prop_boost) {
     # utility funcs
     source('model/utils.R')
     # modelling daily infections / sampling curve shapes
-    source('model/CHIK-X_sim.R')
+    source('model/CHIK-X_sim_funcs.R')
 
 
     # define res. dir. and sim. hyper-params
@@ -65,7 +65,7 @@ walk(props, function(.prop_boost) {
     df_burden <- read.csv("data/2019ppp_pd_df_suit_means_who_p_spillover.csv")
     # 2019ppp_df_suit_means_pop_wght_pop_size_who_p_spillover
         # when changing df burden make sure that the corresponding 
-        # suitability columns are named appropriately in chik-x_sim.R
+        # suitability columns are named appropriately in CHIK-X_sim_funcs.R
         # e.g. df_burden$mean_pop_wght_transfrm <- fact_f * df_burden$mean_pd_weighted^fact_k  
 
 
@@ -168,7 +168,7 @@ walk(props, function(.prop_boost) {
     # utility funcs
     source('model/utils.R')
     # modelling daily infections / sampling curve shapes
-    source('model/CHIK-X_sim.R')
+    source('model/CHIK-X_sim_funcs.R')
 
 
     # define res. dir. and sim. hyper-params
@@ -205,7 +205,7 @@ walk(props, function(.prop_boost) {
     df_burden <- read.csv("data/2019ppp_pd_df_suit_means_who_p_spillover.csv")
     # 2019ppp_df_suit_means_pop_wght_pop_size_who_p_spillover
         # when changing df burden make sure that the corresponding 
-        # suitability columns are named appropriately in chik-x_sim.R
+        # suitability columns are named appropriately in CHIK-X_sim_funcs.R
         # e.g. df_burden$mean_pop_wght_transfrm <- fact_f * df_burden$mean_pd_weighted^fact_k  
 
 

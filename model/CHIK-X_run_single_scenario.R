@@ -27,7 +27,7 @@
 # utility funcs
 source('model/utils.R')
 # modelling daily infections / sampling curve shapes
-source('model/CHIK-X_sim.R')
+source('model/CHIK-X_sim_funcs.R')
 
 
 # define simulation parameters
