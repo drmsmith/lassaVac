@@ -19,12 +19,6 @@ conflicts_prefer(
 
 
 source('visualisations/utils_vis.R')
-load("figs/map_ws.RData")
-
-# CHIK-X simulation results and summaries 
-# df_all_sims_long <- read.csv("res/import_model_sim_res_x100.csv")
-# df_results_summary <- read.csv('res/import_model_sim_summary_x100.csv')
-# df_full_summary <- read.csv('res/import_model_100_sim_full_summary.csv')
 
 main_dir <- 'res/baseline_inc_0.7_noise_0.1'
 
@@ -36,17 +30,8 @@ df_burden = read.csv('data/2019ppp_df_suit_means_pop_wght_pop_size_who_p_spillov
 
 df_burden$annual_incidence <- df_burden$annual_incidence*0.7
 
-# helper files
-# df_burden = read.csv('data/df_suit_means_pop_wght_pop_size_who_p_spillover.csv') 
-# df_iso_regions = read.csv('methods/misc/ISO-3166-Countries-with-Regional-Codes.csv')
-# df_who_regions = read.csv('methods/misc/df_countries_who_regions_codes.csv')
-
-
-
-
-# add 0 for country not being in 
-# and NA for no travel info 
-world <- get_worldmap() # takes a minute and throws warnings 
+# load world map for plotting 
+world <- get_worldmap_nocode() # takes a minute and throws warnings 
 
 # this gives how frequently a given country appears in the simulations 
 # p spillover and pop_size 
@@ -118,16 +103,12 @@ apply(df_sum_stats_zeros_NAs, 2, max) %>%
 
 
 
-dest_dir <- file.path("figs", "outbreak_progression")
-if (!dir.exists(dest_dir)) dir.create(dest_dir)
-
-
 
 n_spread <- data.frame(unlist(table(df_results_summary$simulation)))
 colnames(n_spread) <- c("simulation", "n_countries")
 n_spread
 
-sim_no <- 78 # 94
+sim_no <- 1# 78 # 94
 
 df_sim = df_full_summary %>% filter(simulation==sim_no) %>% arrange(outbreak_start_day) %>%
     mutate(
@@ -139,7 +120,7 @@ df_sim = df_full_summary %>% filter(simulation==sim_no) %>% arrange(outbreak_sta
 wrld_joined_full <- left_join(
     world, df_sim,
     by = join_by(adm0_a3 == code)
-) # %>% filter(region_code == 'AFR')
+)
 
 
 wrld_joined_nas <- left_join(
@@ -147,17 +128,14 @@ wrld_joined_nas <- left_join(
     by = join_by(adm0_a3 == code)
 ) %>% filter(!complete.cases(pop_size))
 
-# get data set without current region
-wrld_fltrd <- filter(wrld_joined_full, !code %in% ccodes_filter)
-
-
 ccodes_filter <- df_sim$code
+# get data set without current region
+wrld_fltrd <- filter(wrld_joined_full, !adm0_a3 %in% ccodes_filter)
+
 
 
 cepi_cols <- c("#547dbf", "#fbeaa5", "#db4437")
 guide_lab <- "Infections\nper 100,000"
-
-
 
 outbr_map <- ggplot(data = wrld_joined_full) +
     geom_sf(aes(fill = per_100k), color = "darkgrey", linewidth = 0.2) +
@@ -180,16 +158,22 @@ outbr_map <- ggplot(data = wrld_joined_full) +
     guides(color = "none") +
     coord_sf(expand=FALSE)
 
+wrld_joined_right$adm0_a3 %>% sort
+ccodes_filter %>% sort
 
-wrld_fltrd_outbreaks <- filter(wrld_joined_full, code %in% ccodes_filter)
+world[world$adm0_a3=='VCT',]
+wrld_joined_full[world$adm0_a3=='VCT',]
+df_sim[df_sim$code=='VCT',]
+
+wrld_fltrd_outbreaks <- filter(wrld_joined_full, adm0_a3 %in% ccodes_filter) %>% 
+    arrange(outbreak_start_day) %>% filter(!is.na(outbreak_start_day))
+
 df_coords <- map(wrld_fltrd_outbreaks$geometry, st_centroid) %>%
     map(~c(lon=.x[1], lat=.x[2])) %>% bind_rows
 
-start_point <- st_centroid(wrld_start$geometry)
-
 source_dest <- data.frame(
-    start = wrld_fltrd_outbreaks$code, 
-    dest = dplyr::lead(wrld_fltrd_outbreaks$code, 1)
+    start = ccodes_filter, 
+    dest = dplyr::lead(ccodes_filter, 1)
     ) %>% drop_na
 
 start_dest_coords <- cbind(
@@ -241,10 +225,8 @@ df_start_dest_code_coords %>% tibble %>%
                 # that's the whole point of doing this loop:
                 curvature = current %>% pull(curvature),
                 linewidth = 0.4,
-                arrow = arrow(
-                    length = unit(0.02, "npc")
-                )
-                
+                arrow = arrow(length = unit(0.02, "npc")),
+                alpha=0.8
             )
     })
 
@@ -262,6 +244,11 @@ ggsave(
 # infections per 100k  #
 ########################
 
+dest_dir <- file.path("figs", "maps_spread_arrows_infections_svg")
+if (!dir.exists(dest_dir)) dir.create(dest_dir)
+
+save_extension <- '.svg' # or '.svg'
+
 walk2(n_spread$simulation, n_spread$n_countries, function(.simid, .nspread) {
     
     df_sim = df_full_summary %>% 
@@ -278,32 +265,35 @@ walk2(n_spread$simulation, n_spread$n_countries, function(.simid, .nspread) {
     
     ccodes_filter <- df_sim$code
     # get data set without outbreak countires
-    wrld_fltrd <- filter(wrld_joined_full, !code %in% ccodes_filter)
+    wrld_fltrd <- filter(wrld_joined_full, !adm0_a3 %in% ccodes_filter)
     # get data set with only outbreak countries 
-    wrld_fltrd_outbreaks <- filter(wrld_joined_full, code %in% ccodes_filter)
+    wrld_fltrd_outbreaks <- filter(wrld_joined_full, adm0_a3 %in% ccodes_filter) %>% 
+        arrange(outbreak_start_day) %>% filter(!is.na(outbreak_start_day))
     df_coords <- map(wrld_fltrd_outbreaks$geometry, st_centroid) %>%
         map(~c(lon=.x[1], lat=.x[2])) %>% bind_rows
     
     
     outbr_map <- ggplot(data = wrld_joined_full) +
-        geom_sf(aes(fill = per_100k), color = "darkgrey", linewidth = 0.2) +
+        geom_sf(
+            aes(fill = per_100k), 
+            color = "darkgrey", linewidth = 0.2
+            ) +
         geom_sf(
             data = wrld_fltrd, fill = "gainsboro", color = NA 
         ) +
         scale_fill_gradientn(
             colors = cepi_cols,
             na.value = "gray25", # "lightgray",
-            name = guide_lab
+            name = guide_lab, labels=comma
         ) +
         theme_light(base_size = 16) +
         guides(color = "none") +
         coord_sf(expand=FALSE)
-    
-
-    
+       
+        
     source_dest <- data.frame(
-        start = wrld_fltrd_outbreaks$code, 
-        dest = dplyr::lead(wrld_fltrd_outbreaks$code, 1)
+        start = ccodes_filter, 
+        dest = dplyr::lead(ccodes_filter, 1)
     ) %>% drop_na
     
     start_dest_coords <- cbind(
@@ -317,13 +307,13 @@ walk2(n_spread$simulation, n_spread$n_countries, function(.simid, .nspread) {
     df_start_dest_code_coords$curvature <- runif(
         nrow(df_start_dest_code_coords), -0.2, 0.2
     )
+
     
     
     df_start_dest_code_coords %>% tibble %>%
         pwalk(function(...) {
             # collect all values in the row in a one-rowed data frame
             current <- tibble(...)
-            
             
             # update the plot object with global assignment
             outbr_map <<- outbr_map +
@@ -337,17 +327,16 @@ walk2(n_spread$simulation, n_spread$n_countries, function(.simid, .nspread) {
                     # that's the whole point of doing this loop:
                     curvature = current %>% pull(curvature),
                     linewidth = 0.4,
-                    arrow = arrow(
-                        length = unit(0.02, "npc")
-                    )
+                    arrow = arrow(length = unit(0.02, "npc")), 
+                    alpha = 0.8
                     
                 )
         })
     
     outbr_map <- outbr_map + labs(x='', y='')
     fname <- file.path(
-        "figs/outbr_arrows", 
-        paste0("arrow_map_sim_", .simid,"_x", .nspread, ".png")
+        dest_dir, 
+        paste0("arrow_map_sim_", .simid,"_x", .nspread, save_extension)
         )
     
     ggsave(
@@ -363,6 +352,12 @@ walk2(n_spread$simulation, n_spread$n_countries, function(.simid, .nspread) {
 ########################
 # raw infection totals #
 ########################
+
+dest_dir <- file.path("figs", "maps_spread_arrows_per100k_svg")
+if (!dir.exists(dest_dir)) dir.create(dest_dir)
+
+save_extension <- '.svg' # or '.svg'
+
 walk2(n_spread$simulation, n_spread$n_countries, function(.simid, .nspread) {
     
     df_sim = df_full_summary %>% 
@@ -380,9 +375,10 @@ walk2(n_spread$simulation, n_spread$n_countries, function(.simid, .nspread) {
     
     ccodes_filter <- df_sim$code
     # get data set without outbreak countires
-    wrld_fltrd <- filter(wrld_joined_full, !code %in% ccodes_filter)
+    wrld_fltrd <- filter(wrld_joined_full, !adm0_a3 %in% ccodes_filter)
     # get data set with only outbreak countries 
-    wrld_fltrd_outbreaks <- filter(wrld_joined_full, code %in% ccodes_filter)
+    wrld_fltrd_outbreaks <- filter(wrld_joined_full, adm0_a3 %in% ccodes_filter) %>% 
+        arrange(outbreak_start_day) %>% filter(!is.na(outbreak_start_day))
     df_coords <- map(wrld_fltrd_outbreaks$geometry, st_centroid) %>%
         map(~c(lon=.x[1], lat=.x[2])) %>% bind_rows
     
@@ -398,16 +394,16 @@ walk2(n_spread$simulation, n_spread$n_countries, function(.simid, .nspread) {
         scale_fill_gradientn(
             colors = cepi_cols,
             na.value = "gray25", # "lightgray",
-            name = guide_lab
+            name = guide_lab, labels=comma
         ) +
         theme_light(base_size = 16) +
         guides(color = "none") +
         coord_sf(expand=FALSE)
-    
-    
+
+
     source_dest <- data.frame(
-        start = wrld_fltrd_outbreaks$code, 
-        dest = dplyr::lead(wrld_fltrd_outbreaks$code, 1)
+        start = ccodes_filter, 
+        dest = dplyr::lead(ccodes_filter, 1)
     ) %>% drop_na
     
     start_dest_coords <- cbind(
@@ -426,8 +422,7 @@ walk2(n_spread$simulation, n_spread$n_countries, function(.simid, .nspread) {
     df_start_dest_code_coords %>% tibble %>%
         pwalk(function(...) {
             # collect all values in the row in a one-rowed data frame
-            current <- tibble(...)
-            
+            current <- tibble(...)     
             
             # update the plot object with global assignment
             outbr_map <<- outbr_map +
@@ -441,17 +436,15 @@ walk2(n_spread$simulation, n_spread$n_countries, function(.simid, .nspread) {
                     # that's the whole point of doing this loop:
                     curvature = current %>% pull(curvature),
                     linewidth = 0.4,
-                    arrow = arrow(
-                        length = unit(0.02, "npc")
-                    )
-                    
+                    arrow = arrow(length = unit(0.02, "npc")),
+                    alpha = 0.8
                 )
         })
     
     outbr_map <- outbr_map + labs(x='', y='')
     fname <- file.path(
-        "figs/outbr_arrows", 
-        paste0("arrow_map_sim_", .simid,"_x", .nspread, ".png")
+        dest_dir, 
+        paste0("arrow_map_sim_", .simid,"_x", .nspread, save_extension)
     )
     
     ggsave(
