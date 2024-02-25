@@ -8,6 +8,7 @@ preprocessing/mobility_and_p_spillover/eda.R
 figs
 .Rproj.user
 .lintr
+.vscode
 handover_and_TODO.pptx
 methods
 test
