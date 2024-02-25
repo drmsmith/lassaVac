@@ -399,3 +399,86 @@ make_scenario_rate_plot_all_scenarios <- function(
 }
 
 
+
+
+
+make_scenario_rate_plot_single_scenario <- function(
+    # joined df_full_summary for scenarios, needs a scenario_id column
+    df_full_summary, 
+    ncols = 1 # number of columns in facet_wrap 
+    ) {
+    
+    # calculate cumulative spread over time 
+    spread_cumul_timing <- df_full_summary %>%
+        group_by(simulation, scenario_id) %>%
+        add_count(simulation, code) %>%
+        mutate(
+            cumul_nspread = cumsum(n),
+            simulation = factor(simulation),
+            scenario_id = factor(scenario_id, levels = ids)
+        )
+
+    wider_cumul_spread <- spread_cumul_timing %>% 
+        group_by(scenario_id) %>% group_split() %>% 
+        map(function(spread_cumul_timing) {
+            spread_cumul_timing %>%
+                group_by(simulation, scenario_id) %>%
+                make_wider_cumul_spread()
+            }) %>%
+        setNames(ids) %>% bind_rows(.id='scenario_id') %>%
+        mutate(scenario_id = factor(scenario_id, levels=ids))
+    # subset and summarise cdf for test 
+    sum_cumul_spread <- wider_cumul_spread %>% 
+        group_by(scenario_id) %>% group_split() %>%  
+        map(function(wider_cumul_spread) {
+            wider_cumul_spread %>% 
+                select(!scenario_id) %>%
+                mean_median_trajectory()
+            }, .progress = T) %>%
+        setNames(ids) %>% 
+        bind_rows(.id='scenario_id') %>%
+        mutate(scenario_id = factor(scenario_id, levels=ids))
+
+        
+
+
+    # prepare zika baseline 
+    df_zika_cumul <- make_df_zika_cumul()
+
+    rate_tune_plot <- ggplot(
+        spread_cumul_timing,
+        aes(x = outbreak_start_day / 365, y = cumul_nspread)
+        ) +
+        facet_wrap(~scenario_id, ncol=ncols) + 
+        geom_line(
+            aes(group = simulation), color = "#8ca8d4", # "#bd5e8d", # "darkgray", 
+            linewidth = 0.8, alpha = 0.45
+            ) +
+        geom_line(
+            data = df_zika_cumul, aes(x = date_norm, y = cumul_nspread),
+            linewidth = 1, color = "#5f2457",# "#5f2457" # "black"
+            alpha=0.9
+        ) + 
+        geom_line(
+            data = sum_cumul_spread, aes(x = days/365, y = mean_nspread),
+            linewidth = 1, color = "#2e4569",# "#5f2457" # "black"
+            linetype='dotted', alpha=0.9
+        ) +
+        geom_line(
+            data = sum_cumul_spread, aes(x = days/365, y = median_nspread),
+            linewidth = 1, color = "#2e4569",# "#5f2457" # "black"
+            linetype='dashed', alpha=0.9
+        ) +
+        guides(color = "none") +
+        xlim(0, 2.1) +
+        coord_cartesian(expand=FALSE) + 
+        labs(
+            x = "Time (years)", 
+            y = "Number of countries\nexperiencing outbreaks"
+        ) +
+        theme_light(base_size = 16)
+        rate_tune_plot
+
+    return(rate_tune_plot)
+}
+
