@@ -33,6 +33,12 @@ df_burden = read.csv('data/2019ppp_df_suit_means_pop_wght_pop_size_who_p_spillov
 df_burden$annual_incidence <- df_burden$annual_incidence*incidence_factor
 
 
+
+
+######################
+# file preprocessing # 
+######################
+
 # this gives how frequently a given country appears in the simulations 
 # p spillover and pop_size 
 percent_pop_size_spillover = df_full_summary %>% 
@@ -52,33 +58,18 @@ df_sum_stats <- df_full_summary %>%
     mutate(
         country = factor(country, levels=unique(country)), 
         per_100k = 1e5*total_infections_all_years/pop_size
-        # per_100k_2yrs = 1e5*years_1_2/pop_size
         ) %>%
     group_by(country, code, region_name, region_code) %>%
     summarise(
-        # pop_size = unique(pop_size),
-        # total cumulative mean, median, IQR 
         percentage_appearance = n(),
         mean_cumul_infections = mean(total_infections_all_years),
         median_cumul_infections = median(total_infections_all_years),
         q1_cumul_infections = quantile(total_infections_all_years, 0.25),
         q3_cumul_infections = quantile(total_infections_all_years, 0.75),
-        # iqr_cumul_infections = IQR(total_infections_all_years),
-        # cumulative mean, median, IQR for first 2 years 
-        # mean_cumul_infections_2yrs = mean(years_1_2),
-        # median_cumul_infections_2yrs = median(years_1_2),
-        # q1_cumul_infections_2yrs = quantile(years_1_2, 0.25),
-        # q3_cumul_infections_2yrs = quantile(years_1_2, 0.75),
-        # # total cumulative mean, median, IQR per 100k pop
         mean_cumul_infections_per100k = mean(per_100k),
         median_cumul_infections_per100k  = median(per_100k),
         q1_cumul_infections_per100k = quantile(per_100k, 0.25),
         q3_cumul_infections_per100k = quantile(per_100k, 0.75),
-        # cumulative mean, median, IQR for first 2 years per 100k pop 
-        # mean_cumul_infections_2yrs_per100k = mean(per_100k_2yrs),
-        # median_cumul_infections_2yrs_per100k = median(per_100k_2yrs),
-        # q1_cumul_infections_2yrs_per100k = quantile(per_100k_2yrs, 0.25),
-        # q3_cumul_infections_2yrs_per100k = quantile(per_100k_2yrs, 0.75),
         .groups='keep'
     ) %>%      
     left_join(  # join with p_spillover, percent_sim, and ppp_size
@@ -104,13 +95,6 @@ df_sum_stats_zeros_NAs[is.na(df_sum_stats_zeros_NAs)] = 0
 ls_sum_stats <- df_sum_stats_zeros_NAs %>% group_by(region_code) %>% group_split()
 
 
-# how to format colour scale legends??
-colnames(df_sum_stats_zeros_NAs)
-apply(df_sum_stats_zeros_NAs, 2, max) %>% 
-    as.numeric %>% 
-    .[!(is.na(.))] %>%
-    format(digits=3, scientific=T)
-
 
 
 ##################################
@@ -118,27 +102,28 @@ apply(df_sum_stats_zeros_NAs, 2, max) %>%
 ##################################
 
 cepi_prim_cols <- c(
-    "#547dbf", "#ffa500", "#db4437", "#9d0f55", "#682860", "#0080A0", "#F9DF79"
+    "#547dbf", "#ffa500", "#db4437", "#9d0f55", 
+    "#682860", "#0080A0", "#F9DF79"
 )
 
-
+# colnames to loop over 
 all_metrics <- c(
     "median_cumul_infections",
     "median_cumul_infections_per100k"
-    # "median_cumul_infections_2yrs",
-    # "median_cumul_infections_2yrs_per100k"
     )
 
-
+# WHO regions 
 region_codes <- c("AFR", "AMR", "EMR", "EUR", "SEAR", "WPR")
-
+# name colours for plotting purposes 
 names(cepi_prim_cols) <- region_codes
 
-
+# destinations and respective file formats 
 barplotdirs <- c("figs/barplots_sorted_freq/svg", "figs/barplots_sorted_freq")
 ext_codes <- c('.svg', '.png')
 
+# loop over destination and associated file format 
 walk2(ext_codes, barplotdirs, function(.ext_code, .dest){
+    # loop over columns to create bar plots 
     walk(all_metrics, function(.curr_metric) {
         walk(region_codes, function(.reg_code) {
             dest_dir = barplotdir
@@ -160,14 +145,17 @@ walk2(ext_codes, barplotdirs, function(.ext_code, .dest){
 }, .progress = TRUE)
 
 
+
+
 #########################
 # BAR PLOT: all regions # 
 #########################
 
+# columns to loop over 
 region_metrics <- c(
     'region_totals', 'region_totals_per100k'
-    # 'region_totals_2yrs', 'region_totals_per100k_2yrs'
     )
+
 
 #########################
 # excluding coutnries   # 
@@ -180,34 +168,29 @@ df_by_region <- df_full_summary %>%
     mutate(
         region_code = factor(region_code, levels=unique(region_code)), 
         per_100k = 1e5*total_infections_all_years/pop_size
-        # per_100k_2yrs = 1e5*years_1_2/pop_size
         ) %>% 
         summarise(
             median_per100k = 1e5*median(total_infections_all_years) / sum(pop_size),
             q1_per100k = 1e5*quantile(total_infections_all_years, 0.25) / sum(pop_size),
             q3_per100k = 1e5*quantile(total_infections_all_years, 0.75) / sum(pop_size),
             region_totals = median(total_infections_all_years),
-            # region_totals_2yrs = median(years_1_2),
             region_totals_per100k = median(per_100k),
-            # region_totals_per100k_2yrs = median(per_100k_2yrs),
             q1_region_totals = quantile(total_infections_all_years, 0.25),
             q3_region_totals = quantile(total_infections_all_years, 0.75),
-            # q1_region_totals_2yrs = quantile(years_1_2, 0.25),
-            # q3_region_totals_2yrs = quantile(years_1_2, 0.75),
             q1_region_totals_per100k = quantile(per_100k, 0.25),
             q3_region_totals_per100k = quantile(per_100k, 0.75),
-            # q1_region_totals_per100k_2yrs = quantile(per_100k_2yrs, 0.25),
-            # q3_region_totals_per100k_2yrs = quantile(per_100k_2yrs, 0.75),
             .groups='keep'
         ) 
 
 
 dest_dir = "figs/barplots_region_excl_0_oubtr_pops"
-# dest_dir <- paste0(dest_dir, .reg_code, collapse = "")
 if (!dir.exists(dest_dir)) dir.create(dest_dir)
 
 formats_to_save <- c('.png', '.svg')
 
+# save different formats of all the metrics 
+# into the same destination directory 
+# since the metrics are fewer
 walk(formats_to_save, function(.ext_code){
     walk(region_metrics, function(.curr_metric) {
         gg_metrics_barplot_region(
@@ -264,27 +247,23 @@ df_by_region <- df_full_summary_with_missing_countries %>%
             q1_per100k = 1e5*quantile(total_infections_all_years, 0.25) / sum(pop_size),
             q3_per100k = 1e5*quantile(total_infections_all_years, 0.75) / sum(pop_size),
             region_totals = median(total_infections_all_years),
-            # region_totals_2yrs = median(years_1_2),
             region_totals_per100k = median(per_100k),
-            # region_totals_per100k_2yrs = median(per_100k_2yrs),
             q1_region_totals = quantile(total_infections_all_years, 0.25),
             q3_region_totals = quantile(total_infections_all_years, 0.75),
-            # q1_region_totals_2yrs = quantile(years_1_2, 0.25),
-            # q3_region_totals_2yrs = quantile(years_1_2, 0.75),
             q1_region_totals_per100k = quantile(per_100k, 0.25),
             q3_region_totals_per100k = quantile(per_100k, 0.75),
-            # q1_region_totals_per100k_2yrs = quantile(per_100k_2yrs, 0.25),
-            # q3_region_totals_per100k_2yrs = quantile(per_100k_2yrs, 0.75),
             .groups='keep'
         ) 
 
 
 dest_dir = "figs/barplots_region_incl_0_oubtr_pops"
-# dest_dir <- paste0(dest_dir, .reg_code, collapse = "")
 if (!dir.exists(dest_dir)) dir.create(dest_dir)
 
 formats_to_save <- c('.png', '.svg')
 
+# save different formats of all the metrics 
+# into the same destination directory 
+# since the metrics are fewer
 walk(formats_to_save, function(.ext_code){
     walk(region_metrics, function(.curr_metric) {
         gg_metrics_barplot_region(
