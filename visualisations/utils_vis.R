@@ -101,14 +101,73 @@ gg_metrics_barplot <- function(
 # gg_metrics_barplot(df_sum_stats, cepi_prim_cols, 'AFR', 'median_cumul_infections_2yrs_per100k')
 
 
+gg_metrics_barplot_region_col_sort <- function(
+    .data,
+    .cols_for_scheme,
+    .region_code,
+    .fill_col,
+    .metric,
+    .dest_dir = "figs/barplots_by_region") { #
+    # prepare colros and labels for plotting
+    ymin_lab <- str_replace(.metric, "median", "q1")
+    ymax_lab <- str_replace(.metric, "median", "q3")
+    guide_lab <- ifelse(
+        str_detect(.metric, "per100k"),
+        "Infections per \n100,000 population",
+        "Infections"
+    ) 
+    .data_fltrd <- .data %>%
+        filter(region_code == .region_code) %>%
+        arrange(desc(percentage_appearance))
+    fctr_levels <- .data_fltrd$country
+
+    .data_fltrd <- .data_fltrd %>%
+        mutate(country = factor(country, levels = fctr_levels))
+        
+
+    .data_fltrd %>%
+        ggplot(aes(x = country, y = .data[[.metric]])) +
+        geom_bar(stat = "identity", fill = .fill_col) +
+        geom_errorbar(
+            aes(x = country, ymin = .data[[ymin_lab]], ymax = .data[[ymax_lab]]),
+            width = 0.4,
+            colour = "grey10",
+            alpha = 0.9, linewidth = 1
+        ) +
+        # scale_fill_manual(values = v_cols) +
+        scale_y_continuous(
+            labels = comma, 
+            limits = function(x) {c(0, 1.05*max(.data_fltrd[[ymax_lab]]))}
+            ) + 
+        theme_light(base_size = 16) +
+        theme(axis.text.x = element_text(angle = 75, hjust = 1)) +
+        guides(fill = "none") +
+        labs(x = "", y = guide_lab) + 
+        coord_cartesian(expand=FALSE)
+
+    dest_filename <- file.path(
+        .dest_dir, 
+        paste0(.region_code, "_", .metric, ".png",collapse = "")
+        )
+    ggsave(
+        filename = dest_filename,
+        width = 4500, height = 3000, units = "px",
+        dpi = 400,
+        bg = "transparent"
+    )
+}
+
+
+
+
 gg_metrics_barplot_region <- function(
     .data,
     .metric,
     .dest_dir = "figs/barplot_by_region") { #
     # prepare colros and labels for plotting
-    v_cols <- colorRampPalette(cepi_prim_cols)(6) %>%
-        unlist() %>%
-        unname()
+    # v_cols <- colorRampPalette(cepi_prim_cols)(6) %>%
+        # unlist() %>% unname()
+    v_cols <- cepi_prim_cols[1:6]
     ymin_lab <- paste0("q1_",.metric)
     ymax_lab <- paste0("q3_",.metric)
     guide_lab <- ifelse(
@@ -407,6 +466,14 @@ get_worldmap <- function() {
     world$codecode[world$name=='USA'] = 'USA'
     return(world)
 }
+
+get_worldmap_nocode <- function() {
+    # get world map data for plotting 
+    world <- ne_countries(scale = "large", returnclass = "sf") %>% 
+        filter(!str_detect(admin, 'arctica')) 
+    return(world)
+}
+
 
 gg_dest_map_global <- function(
     .wrld_joined_full,
